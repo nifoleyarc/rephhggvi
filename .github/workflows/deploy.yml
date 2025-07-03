@@ -41,9 +41,8 @@ jobs:
       run: npm run build
       env:
         # ✅ Только публичные переменные для frontend
-        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        VITE_API_SECRET_KEY: ${{ secrets.VITE_API_SECRET_KEY }}
         NODE_ENV: production
         
     - name: Setup Pages

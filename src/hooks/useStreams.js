@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
+import { useTelegram } from './useTelegram'
 
 const API_BASE = import.meta.env.PROD 
   ? (import.meta.env.VITE_API_URL || 'https://your-server-domain.com/api') 
@@ -10,6 +11,7 @@ export function useStreams() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const { tg } = useTelegram()
 
   const fetchStreams = useCallback(async (category = null) => {
     setLoading(true)
@@ -39,18 +41,32 @@ export function useStreams() {
 
   const addStream = useCallback(async (streamData) => {
     try {
-      const response = await axios.post(`${API_BASE}/streams`, streamData)
+      const headers = {}
+      
+      // Добавляем Telegram initData для аутентификации
+      if (tg?.initData) {
+        headers['x-telegram-init-data'] = tg.initData
+      }
+      
+      const response = await axios.post(`${API_BASE}/streams`, streamData, { headers })
       setStreams(prev => [response.data, ...prev])
       return response.data
     } catch (err) {
       setError(err.message)
       throw err
     }
-  }, [])
+  }, [tg])
 
   const updateStream = useCallback(async (id, streamData) => {
     try {
-      const response = await axios.put(`${API_BASE}/streams/${id}`, streamData)
+      const headers = {}
+      
+      // Добавляем Telegram initData для аутентификации
+      if (tg?.initData) {
+        headers['x-telegram-init-data'] = tg.initData
+      }
+      
+      const response = await axios.put(`${API_BASE}/streams/${id}`, streamData, { headers })
       setStreams(prev => prev.map(stream => 
         stream._id === id ? response.data : stream
       ))
@@ -59,32 +75,53 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [])
+  }, [tg])
 
   const deleteStream = useCallback(async (id) => {
     try {
-      await axios.delete(`${API_BASE}/streams/${id}`)
+      const headers = {}
+      
+      // Добавляем Telegram initData для аутентификации
+      if (tg?.initData) {
+        headers['x-telegram-init-data'] = tg.initData
+      }
+      
+      await axios.delete(`${API_BASE}/streams/${id}`, { headers })
       setStreams(prev => prev.filter(stream => stream._id !== id))
     } catch (err) {
       setError(err.message)
       throw err
     }
-  }, [])
+  }, [tg])
 
   const addCategory = useCallback(async (categoryData) => {
     try {
-      const response = await axios.post(`${API_BASE}/categories`, categoryData)
+      const headers = {}
+      
+      // Добавляем Telegram initData для аутентификации
+      if (tg?.initData) {
+        headers['x-telegram-init-data'] = tg.initData
+      }
+      
+      const response = await axios.post(`${API_BASE}/categories`, categoryData, { headers })
       setCategories(prev => [...prev, response.data])
       return response.data
     } catch (err) {
       setError(err.message)
       throw err
     }
-  }, [])
+  }, [tg])
 
   const updateCategory = useCallback(async (id, categoryData) => {
     try {
-      const response = await axios.put(`${API_BASE}/categories/${id}`, categoryData)
+      const headers = {}
+      
+      // Добавляем Telegram initData для аутентификации
+      if (tg?.initData) {
+        headers['x-telegram-init-data'] = tg.initData
+      }
+      
+      const response = await axios.put(`${API_BASE}/categories/${id}`, categoryData, { headers })
       setCategories(prev => prev.map(cat => 
         cat._id === id ? response.data : cat
       ))
@@ -93,17 +130,24 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [])
+  }, [tg])
 
   const deleteCategory = useCallback(async (id) => {
     try {
-      await axios.delete(`${API_BASE}/categories/${id}`)
+      const headers = {}
+      
+      // Добавляем Telegram initData для аутентификации
+      if (tg?.initData) {
+        headers['x-telegram-init-data'] = tg.initData
+      }
+      
+      await axios.delete(`${API_BASE}/categories/${id}`, { headers })
       setCategories(prev => prev.filter(cat => cat._id !== id))
     } catch (err) {
       setError(err.message)
       throw err
     }
-  }, [])
+  }, [tg])
 
   return {
     streams,

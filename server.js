@@ -14,6 +14,10 @@ import categoriesRoutes from './server/routes/categories.js'
 import webhookRoutes from './server/routes/webhook.js'
 import thumbnailRoutes from './server/routes/thumbnails.js'
 
+// Импортируем middleware для защиты
+import { requireAuth, requireReadAuth } from './server/middleware/auth.js'
+import { rateLimit } from './server/middleware/rateLimit.js'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -39,13 +43,13 @@ app.use((req, res, next) => {
   next()
 })
 
-// API роуты
-app.use('/api/auth', authRoutes)
-app.use('/api/streams', streamsRoutes)
-app.use('/api/categories', categoriesRoutes)
-app.use('/api/webhook', webhookRoutes)
-app.use('/api/refresh-thumbnail', thumbnailRoutes)
-app.use('/api/refresh-thumbnails', thumbnailRoutes)
+// API роуты с защитой
+app.use('/api/auth', rateLimit, authRoutes)
+app.use('/api/streams', rateLimit, requireReadAuth, streamsRoutes) // Чтение доступно всем, запись - только авторизованным
+app.use('/api/categories', rateLimit, requireReadAuth, categoriesRoutes)
+app.use('/api/webhook', webhookRoutes) // Webhook не защищаем, так как он от Telegram
+app.use('/api/refresh-thumbnail', rateLimit, requireAuth, thumbnailRoutes) // Полная защита
+app.use('/api/refresh-thumbnails', rateLimit, requireAuth, thumbnailRoutes)
 
 // Убираем раздачу статических файлов, так как frontend на GitHub Pages
 // app.use(express.static(path.join(__dirname, 'dist')))
