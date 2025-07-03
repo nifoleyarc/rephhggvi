@@ -3,8 +3,13 @@ import axios from 'axios'
 import { useTelegram } from './useTelegram'
 
 const API_BASE = import.meta.env.PROD 
-  ? (import.meta.env.VITE_API_URL || 'https://your-server-domain.com/api') 
+  ? (import.meta.env.VITE_API_URL || 'https://api.your-domain.com/api') 
   : 'http://localhost:3000/api'
+
+// Логируем для отладки
+if (import.meta.env.PROD) {
+  console.log('🌐 Production API URL:', import.meta.env.VITE_API_URL || 'NOT SET')
+}
 
 export function useStreams() {
   const [streams, setStreams] = useState([])
@@ -25,6 +30,13 @@ export function useStreams() {
     } catch (err) {
       setError(err.message)
       console.error('Error fetching streams:', err)
+      
+      // Если API недоступен, показываем пустые данные
+      if (err.code === 'ERR_NETWORK' || err.response?.status === 404) {
+        console.log('⚠️ API недоступен, показываем пустые данные')
+        setStreams([])
+        setCategories([])
+      }
     } finally {
       setLoading(false)
     }
