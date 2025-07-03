@@ -1,0 +1,19 @@
+name: Check Deployment Status
+
+on:
+  workflow_run:
+    workflows: ["Deploy to GitHub Pages"]
+    types:
+      - completed
+
+jobs:
+  check-deployment:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: Check deployment status
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo "🌐 Your site should be available at: https://nifoleyarc.github.io/rephhggvi/"
+        echo "⏱️ It may take a few minutes for changes to appear." 
