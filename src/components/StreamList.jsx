@@ -833,6 +833,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         <div className="text-center py-8 text-tg-hint">
           <Play size={48} className="mx-auto mb-2 opacity-50" />
           <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
+
         </div>
       )}
     </div>

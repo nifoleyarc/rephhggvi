@@ -22,7 +22,11 @@ const PORT = process.env.PORT || 3000
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: [
+    'https://nifoleyarc.github.io', // GitHub Pages
+    'http://localhost:5173', // Vite dev server
+    process.env.FRONTEND_URL // Дополнительный URL из env
+  ].filter(Boolean),
   credentials: true
 }))
 
@@ -43,12 +47,27 @@ app.use('/api/webhook', webhookRoutes)
 app.use('/api/refresh-thumbnail', thumbnailRoutes)
 app.use('/api/refresh-thumbnails', thumbnailRoutes)
 
-// Статические файлы (фронтенд)
-app.use(express.static(path.join(__dirname, 'dist')))
+// Убираем раздачу статических файлов, так как frontend на GitHub Pages
+// app.use(express.static(path.join(__dirname, 'dist')))
 
-// SPA fallback - все неизвестные роуты перенаправляем на index.html
+// API health check
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'VOD Archive API Server',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      streams: '/api/streams',
+      categories: '/api/categories',
+      auth: '/api/auth',
+      webhook: '/api/webhook'
+    }
+  })
+})
+
+// Обработка неизвестных роутов
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'))
+  res.status(404).json({ error: 'API endpoint not found' })
 })
 
 // Обработка ошибок
