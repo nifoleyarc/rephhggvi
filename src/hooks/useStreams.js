@@ -3,7 +3,7 @@ import axios from 'axios'
 import { useTelegram } from './useTelegram'
 
 const API_BASE = import.meta.env.PROD 
-  ? (import.meta.env.VITE_API_URL || '') 
+  ? (import.meta.env.VITE_API_URL || 'https://gensyxavods.com/api') 
   : 'http://localhost:3000/api'
 
 // Демо-данные для GitHub Pages
