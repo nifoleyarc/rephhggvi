@@ -365,20 +365,6 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
     }
   }
 
-  const handleRefreshThumbnail = async () => {
-    setIsLoading(true)
-    try {
-      await onRefreshThumbnail(stream.id || stream._id)
-      showToast('Превью обновлено', 'success')
-      hapticFeedback('notification', 'success')
-    } catch (error) {
-      console.error('Error refreshing thumbnail:', error)
-      showToast('Ошибка обновления превью', 'error')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   if (isEditing) {
     return (
       <motion.div
@@ -506,7 +492,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
         <ThumbnailImage thumbnail={stream.thumbnail} />
         <div className="absolute top-2 right-2 flex gap-1">
           <button
-            onClick={handleRefreshThumbnail}
+            onClick={() => onRefreshThumbnail(stream.id || stream._id)}
             disabled={isLoading}
             className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50"
             title="Обновить превью"
@@ -716,6 +702,24 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       if (onDataUpdate) onDataUpdate()
     } catch (error) {
       console.error('Error deleting stream:', error)
+      throw error
+    }
+  }
+
+  const handleRefreshThumbnail = async (streamId) => {
+    try {
+      const response = await axios.post(
+        `${API_CONFIG.baseURL}/streams/${streamId}/refresh-thumbnail`,
+        {},
+        { headers: API_CONFIG.getAuthHeaders(tg?.initData) }
+      )
+      
+      if (response.data.success) {
+        fetchStreams()
+        if (onDataUpdate) onDataUpdate()
+      }
+    } catch (error) {
+      console.error('Error refreshing thumbnail:', error)
       throw error
     }
   }
