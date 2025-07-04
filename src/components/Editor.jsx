@@ -22,6 +22,27 @@ const formatDateSafely = (dateString, formatStr, options = {}) => {
   }
 }
 
+// Утилита для форматирования даты для datetime-local input
+const formatDateTimeLocal = (dateString) => {
+  try {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ''
+    
+    // Форматируем в yyyy-MM-ddTHH:mm формат для datetime-local
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  } catch (error) {
+    console.warn('Invalid date format:', dateString)
+    return ''
+  }
+}
+
 // Утилита для безопасной проверки дат в поиске
 const checkDateMatch = (dateString, query) => {
   try {
@@ -273,19 +294,20 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <Save size={16} />
+                  <Plus size={16} />
                 )}
-                {isSubmitting ? 'Добавление...' : 'Добавить стрим'}
+                Добавить стрим
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Отмена
               </button>
@@ -304,7 +326,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
     streamUrl: stream.streamUrl || stream.telegram_url || '',
     category: stream.category || '',
     tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
-    date: stream.date || stream.stream_date || '',
+    date: formatDateTimeLocal(stream.date || stream.stream_date),
     thumbnail: stream.thumbnail || ''
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -316,7 +338,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
         streamUrl: stream.streamUrl || stream.telegram_url || '',
         category: stream.category || '',
         tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
-        date: stream.date || stream.stream_date || '',
+        date: formatDateTimeLocal(stream.date || stream.stream_date),
         thumbnail: typeof stream.thumbnail === 'object' && stream.thumbnail?.url 
           ? stream.thumbnail.url 
           : stream.thumbnail || ''
@@ -501,8 +523,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
           </button>
           <button
             onClick={() => onEdit(stream)}
-            disabled={isLoading}
-            className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50"
+            className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
             title="Редактировать"
           >
             <Edit size={14} />
@@ -519,8 +540,10 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
       </div>
 
       <div className="p-4">
-        <h3 className="text-white font-medium mb-2 line-clamp-2">{stream.title}</h3>
-        
+        <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
+          {stream.title}
+        </h3>
+
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
           <Calendar size={14} />
           <span>{formatDateSafely(stream.date || stream.stream_date, 'dd MMM yyyy, HH:mm', { locale: ru })}</span>
@@ -644,6 +667,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         
         if (method === 'telegram' && tg?.initData) {
           API_CONFIG.setAuthState(true, 'telegram', tg.initData)
+        } else if (method === 'password') {
+          API_CONFIG.setAuthState(true, 'password', null)
         } else {
           API_CONFIG.setAuthState(true, method, null)
         }
@@ -687,6 +712,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
   const handleUpdateStream = async (streamData, streamId) => {
     try {
       await updateStream(streamId, streamData)
+      setEditingStream(null)
       fetchStreams()
       if (onDataUpdate) onDataUpdate()
     } catch (error) {
@@ -724,10 +750,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     }
   }
 
-  // Фильтрация и группировка стримов
+  // Фильтрация стримов по поиску
   const filteredStreams = streams.filter(stream => {
-    if (!searchQuery) return true
-    
     const query = searchQuery.toLowerCase()
     return (
       stream.title?.toLowerCase().includes(query) ||
@@ -747,29 +771,22 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     return groups
   }, {})
 
-  // Сортировка групп по дате (новые сверху)
-  const sortedGroupKeys = Object.keys(groupedStreams).sort((a, b) => {
-    const dateA = new Date(groupedStreams[a][0].date || groupedStreams[a][0].stream_date)
-    const dateB = new Date(groupedStreams[b][0].date || groupedStreams[b][0].stream_date)
-    return dateB - dateA
-  })
-
-  // Форма аутентификации
+  // Форма входа
   if (!isAuthenticated) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4"
+          className="bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-white">Вход в редактор</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="p-2 text-gray-400 hover:text-white transition-colors"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
           </div>
 
@@ -777,11 +794,11 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
             <div className="text-center py-4">
               <div className="text-red-400 mb-2">
                 <Settings size={48} className="mx-auto mb-2" />
-                <p className="text-lg font-medium">Доступ временно ограничен</p>
-                <p className="text-sm mt-1">
-                  Попробуйте через {banTimeRemaining} ч.
-                </p>
+                <p className="text-lg font-medium">Доступ ограничен</p>
               </div>
+              <p className="text-gray-400">
+                Попробуйте позже ({banTimeRemaining} ч.)
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -790,14 +807,14 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
-                  placeholder="Пароль администратора"
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Введите пароль"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => e.key === 'Enter' && !loading && handleAuth()}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -805,15 +822,15 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
               <button
                 onClick={handleAuth}
-                disabled={loading}
-                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                disabled={loading || !password.trim()}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <Loader2 size={20} className="animate-spin" />
                 ) : (
-                  <User size={20} />
+                  <ArrowLeft size={20} />
                 )}
-                {loading ? 'Вход...' : 'Войти'}
+                Войти
               </button>
             </div>
           )}
@@ -822,25 +839,26 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     )
   }
 
-  // Основной интерфейс редактора
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gray-900 rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-hidden"
+        className="bg-gray-900 rounded-lg w-full max-w-6xl mx-4 h-[90vh] flex flex-col"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        {/* Заголовок */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <h2 className="text-xl font-bold text-white">Редактор стримов</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="p-2 text-gray-400 hover:text-white transition-colors"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+        {/* Контент */}
+        <div className="flex-1 overflow-y-auto p-4">
           {/* Форма добавления */}
           <AddStreamForm
             onAdd={handleAddStream}
@@ -852,63 +870,50 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
           {/* Поиск */}
           <div className="mb-6">
             <div className="relative">
-              <Search size={20} className="absolute left-3 top-3 text-gray-400" />
+              <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск по названию, категории, тегам или дате..."
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Поиск стримов..."
+                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Список стримов по группам */}
-          {sortedGroupKeys.length > 0 ? (
-            <div className="space-y-6">
-              {sortedGroupKeys.map(dateGroup => (
-                <div key={dateGroup}>
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Calendar size={20} />
-                    {dateGroup}
-                    <span className="text-sm text-gray-400">
-                      ({groupedStreams[dateGroup].length} стрим{groupedStreams[dateGroup].length === 1 ? '' : groupedStreams[dateGroup].length < 5 ? 'а' : 'ов'})
-                    </span>
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {groupedStreams[dateGroup].map(stream => (
-                      <StreamCard
-                        key={stream.id || stream._id}
-                        stream={stream}
-                        isEditing={editingStream && (editingStream.id === stream.id || editingStream._id === stream._id)}
-                        onEdit={setEditingStream}
-                        onCancelEdit={() => setEditingStream(null)}
-                        onSave={handleUpdateStream}
-                        onDelete={handleDeleteStream}
-                        onRefreshThumbnail={handleRefreshThumbnail}
-                        categories={categories}
-                        showToast={showToast}
-                        hapticFeedback={hapticFeedback}
-                      />
-                    ))}
-                  </div>
+          {/* Список стримов */}
+          <div className="space-y-6">
+            {Object.entries(groupedStreams).map(([dateGroup, streamsInGroup]) => (
+              <div key={dateGroup}>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Calendar size={18} />
+                  {dateGroup} ({streamsInGroup.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {streamsInGroup.map(stream => (
+                    <StreamCard
+                      key={stream.id || stream._id}
+                      stream={stream}
+                      isEditing={editingStream !== null && ((editingStream.id || editingStream._id) === (stream.id || stream._id))}
+                      onEdit={setEditingStream}
+                      onCancelEdit={() => setEditingStream(null)}
+                      onSave={handleUpdateStream}
+                      onDelete={handleDeleteStream}
+                      onRefreshThumbnail={handleRefreshThumbnail}
+                      categories={categories}
+                      showToast={showToast}
+                      hapticFeedback={hapticFeedback}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
+              </div>
+            ))}
+          </div>
+
+          {filteredStreams.length === 0 && (
             <div className="text-center py-12">
-              <Search size={48} className="mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-400">
-                {searchQuery ? 'Стримы не найдены' : 'Нет стримов для отображения'}
-              </p>
+              <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-400">Стримы не найдены</p>
             </div>
           )}
         </div>

@@ -75,6 +75,10 @@ export const API_CONFIG = {
       if (this._authState.authMethod === 'telegram' && this._authState.authData) {
         headers['x-telegram-init-data'] = this._authState.authData
       }
+      // Для авторизации через пароль добавляем специальный заголовок
+      if (this._authState.authMethod === 'password') {
+        headers['x-admin-auth'] = 'true'
+      }
       return headers
     }
 
