@@ -3,9 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff } from 'lucide-react'
 import { useTelegram } from '../hooks/useTelegram'
 import { useStreams } from '../hooks/useStreams'
+import { API_CONFIG } from '../utils/api'
 import axios from 'axios'
-
-const API_BASE = import.meta.env.PROD ? '/api' : 'http://localhost:3000/api'
 
 const ThumbnailImage = ({ thumbnail }) => {
   const [error, setError] = useState(false)
@@ -82,8 +81,10 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       if (tg && tg.initData) {
         console.log('Attempting automatic admin authentication...')
         try {
-          const response = await axios.post(`${API_BASE}/auth`, { 
+          const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
             initData: tg.initData 
+          }, {
+            headers: API_CONFIG.getAuthHeaders(tg.initData)
           })
           
           if (response.data.success && response.data.method === 'telegram') {
@@ -127,8 +128,10 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       // Сначала пытаемся аутентификацию по Telegram (если есть initData)
       if (tg && tg.initData) {
         try {
-          const telegramResponse = await axios.post(`${API_BASE}/auth`, { 
+          const telegramResponse = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
             initData: tg.initData 
+          }, {
+            headers: API_CONFIG.getAuthHeaders(tg.initData)
           })
           
           if (telegramResponse.data.success && telegramResponse.data.method === 'telegram') {
@@ -158,7 +161,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       }
 
       // Если Telegram аутентификация не удалась, пытаемся по паролю
-      const response = await axios.post(`${API_BASE}/auth`, { password })
+      const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { password }, {
+        headers: API_CONFIG.getAuthHeaders()
+      })
       if (response.data.success) {
         setIsAuthenticated(true)
         setIsBanned(false)
@@ -188,7 +193,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
   const handleRefreshThumbnails = async () => {
     setRefreshingThumbnails(true)
     try {
-      const response = await axios.post(`${API_BASE}/refresh-thumbnails`)
+      const response = await axios.post(`${API_CONFIG.baseURL}/refresh-thumbnails`, {}, {
+        headers: API_CONFIG.getAuthHeaders(tg?.initData)
+      })
       if (response.data.success) {
         showToast(response.data.message, 'success')
         hapticFeedback('notification', 'success')
@@ -209,7 +216,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
   const handleRefreshSingleThumbnail = async (streamId) => {
     try {
-      const response = await axios.post(`${API_BASE}/refresh-thumbnail`, { streamId })
+      const response = await axios.post(`${API_CONFIG.baseURL}/refresh-thumbnail`, { streamId }, {
+        headers: API_CONFIG.getAuthHeaders(tg?.initData)
+      })
       if (response.data.success) {
         showToast(response.data.message, 'success')
         hapticFeedback('notification', 'success')

@@ -144,6 +144,12 @@ npm run setup:password
 # Генерировать Frontend ключ для доступа к данным
 npm run generate:frontend-key
 
+# Проверить API конфигурацию
+npm run check:api-config
+
+# Проверить переменные GitHub
+npm run check:github-vars
+
 # Настроить webhook для Telegram бота
 npm run setup:webhook
 
@@ -212,7 +218,18 @@ npm run check:webhook
 2. Проверьте, что `TELEGRAM_BOT_TOKEN` действителен
 3. Убедитесь, что вы запускаете приложение через Telegram
 
+### Проблема: "405 Method Not Allowed" в редакторе
+1. Проверьте API конфигурацию: `npm run check:api-config`
+2. Убедитесь, что `VITE_API_URL` настроен в GitHub Variables
+3. Значение должно быть: `https://gensyxavods.com/api` (НЕ github.io!)
+4. Сделайте новый deploy после настройки переменных
+
 ### Проблема: "Переменные окружения не загружаются"
 1. Убедитесь, что файл `.env` в корне проекта
 2. Проверьте, что нет пробелов вокруг `=`
-3. Перезапустите сервер после изменения `.env` 
+3. Перезапустите сервер после изменения `.env`
+
+### Проблема: "Запросы идут на GitHub Pages вместо API сервера"
+1. Проверьте, что используется `API_CONFIG` вместо относительных путей
+2. В коде не должно быть: `'/api'` или `'/api/auth'`
+3. Должно быть: `API_CONFIG.baseURL + '/auth'` 
