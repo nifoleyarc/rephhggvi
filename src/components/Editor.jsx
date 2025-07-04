@@ -43,6 +43,22 @@ const formatDateTimeLocal = (dateString) => {
   }
 }
 
+// Функция для получения текущей даты в UTC+5
+const getCurrentDateUTC5 = () => {
+  const now = new Date()
+  // Получаем время в UTC+5 (добавляем 5 часов к UTC)
+  const utc5Time = new Date(now.getTime() + (5 * 60 * 60 * 1000))
+  return utc5Time.toISOString()
+}
+
+// Функция для получения текущей даты в UTC+5 для datetime-local input
+const getCurrentDateTimeLocalUTC5 = () => {
+  const now = new Date()
+  // Получаем время в UTC+5 (добавляем 5 часов к UTC)
+  const utc5Time = new Date(now.getTime() + (5 * 60 * 60 * 1000))
+  return utc5Time.toISOString().slice(0, 16)
+}
+
 // Утилита для безопасной проверки дат в поиске
 const checkDateMatch = (dateString, query) => {
   try {
@@ -134,7 +150,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
     streamUrl: '',
     category: '',
     tags: '',
-    date: new Date().toISOString().slice(0, 16), // Устанавливаем текущую дату и время
+    date: getCurrentDateTimeLocalUTC5(), // Устанавливаем текущую дату и время в UTC+5
     thumbnail: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -145,7 +161,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
       streamUrl: '',
       category: '',
       tags: '',
-      date: new Date().toISOString().slice(0, 16), // Устанавливаем текущую дату и время
+      date: getCurrentDateTimeLocalUTC5(), // Устанавливаем текущую дату и время в UTC+5
       thumbnail: ''
     })
     setIsExpanded(false)
@@ -163,7 +179,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
       const streamData = {
         title: formData.title,
         telegramUrl: formData.streamUrl, // Исправляем поле для сервера
-        date: formData.date || new Date().toISOString(), // Устанавливаем дату по умолчанию
+        date: formData.date || getCurrentDateUTC5(), // Устанавливаем дату по умолчанию в UTC+5
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         categories: formData.category ? [formData.category] : [], // Преобразуем в массив
         thumbnail: formData.thumbnail || undefined
@@ -257,7 +273,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Дата стрима
+                  Дата стрима <span className="text-gray-400 text-xs">(UTC+5)</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -361,7 +377,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
       const streamData = {
         title: editData.title,
         telegramUrl: editData.streamUrl, // Исправляем поле для сервера
-        date: editData.date || new Date().toISOString(), // Устанавливаем дату по умолчанию
+        date: editData.date || getCurrentDateUTC5(), // Устанавливаем дату по умолчанию в UTC+5
         tags: editData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         categories: editData.category ? [editData.category] : [], // Преобразуем в массив
         thumbnail: editData.thumbnail || undefined
@@ -449,7 +465,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Дата стрима
+                Дата стрима <span className="text-gray-400 text-xs">(UTC+5)</span>
               </label>
               <input
                 type="datetime-local"
