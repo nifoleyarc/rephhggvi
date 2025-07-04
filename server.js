@@ -57,15 +57,7 @@ app.use('/api/refresh-thumbnails', rateLimit, requireAuth, thumbnailRoutes)
 // API health check
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'VOD Archive API Server',
-    status: 'running',
-    version: '1.0.0',
-    endpoints: {
-      streams: '/api/streams',
-      categories: '/api/categories',
-      auth: '/api/auth',
-      webhook: '/api/webhook'
-    }
+    message: 'Backend status: ok'
   })
 })
 
