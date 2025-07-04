@@ -237,11 +237,12 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         const id = streamId || editingStream._id
         await updateStream(id, streamData)
         showToast('Стрим обновлён', 'success')
+        // Закрываем режим редактирования
+        setEditingStream(null)
       } else {
         await addStream(streamData)
         showToast('Стрим добавлен', 'success')
       }
-      setEditingStream(null)
       hapticFeedback('notification', 'success')
     } catch (error) {
       showToast('Ошибка при сохранении стрима', 'error')
@@ -304,7 +305,11 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
             Осталось: {Math.floor(banTimeRemaining)} часов
           </p>
           <button
-            onClick={onClose}
+            onClick={() => {
+              // Сбрасываем состояние редактирования при закрытии
+              setEditingStream(null)
+              onClose()
+            }}
             className="mt-4 px-4 py-2 bg-tg-button text-tg-button-text rounded-lg font-roobert-medium"
           >
             Вернуться
@@ -362,7 +367,11 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       <div className="flex-shrink-0 bg-tg-secondary-bg border-b border-gray-700">
         <div className="flex items-center justify-between p-4">
           <button
-            onClick={onClose}
+            onClick={() => {
+              // Сбрасываем состояние редактирования при закрытии
+              setEditingStream(null)
+              onClose()
+            }}
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
           >
             <ArrowLeft size={20} />
@@ -461,12 +470,17 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
     delete streamData.time
     
     onSave(streamData)
-    // Очищаем только ссылку на пост, остальные значения сохраняем
+    // Очищаем форму и закрываем её
     setAddFormData({
-      ...addFormData,
-      telegramUrl: ''
+      title: '',
+      date: '',
+      time: '12:00',
+      tags: '',
+      telegramUrl: '',
+      thumbnail: ''
     })
-    // Форма остается открытой для быстрого добавления следующего стрима
+    // Закрываем форму после добавления
+    setShowAddForm(false)
   }
 
   const handleRefreshSingle = async (streamId) => {
