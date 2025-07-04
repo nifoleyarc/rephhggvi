@@ -58,23 +58,25 @@ export function useStreams() {
     try {
       // Если API URL не настроен в production, используем демо-данные
       if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
-        console.log('🎭 Using demo data for GitHub Pages')
+        console.log('🎭 VITE_API_URL not set - using demo data for GitHub Pages')
         setStreams(DEMO_STREAMS)
         setCategories(DEMO_CATEGORIES)
         setLoading(false)
         return
       }
 
+      console.log('🌐 Connecting to API:', API_BASE)
       const params = category ? { category } : {}
       const response = await axios.get(`${API_BASE}/streams`, { params })
+      console.log('✅ API connected successfully!')
       setStreams(response.data.streams || [])
       setCategories(response.data.categories || [])
     } catch (err) {
       setError(err.message)
-      console.error('Error fetching streams:', err)
+      console.error('❌ API connection failed:', err)
       
       // Если API недоступен, показываем демо-данные
-      if (err.code === 'ERR_NETWORK' || err.response?.status === 404) {
+      if (err.code === 'ERR_NETWORK' || err.response?.status === 404 || err.response?.status === 401) {
         console.log('⚠️ API недоступен, показываем демо-данные')
         setStreams(DEMO_STREAMS)
         setCategories(DEMO_CATEGORIES)

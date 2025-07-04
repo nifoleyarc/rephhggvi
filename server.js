@@ -27,8 +27,10 @@ const PORT = process.env.PORT || 3000
 // Middleware
 app.use(cors({
   origin: [
-    'https://nifoleyarc.github.io', // GitHub Pages
+    'https://nifoleyarc.github.io', // GitHub Pages основной домен
+    'https://nifoleyarc.github.io/rephhggvi', // GitHub Pages конкретное приложение
     'http://localhost:5173', // Vite dev server
+    'http://localhost:3000', // Локальный сервер
     process.env.FRONTEND_URL // Дополнительный URL из env
   ].filter(Boolean),
   credentials: true

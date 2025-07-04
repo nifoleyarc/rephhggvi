@@ -92,6 +92,11 @@ export function requireAuth(req, res, next) {
 
 // Middleware для проверки только чтения (более мягкая защита)
 export function requireReadAuth(req, res, next) {
-  // Теперь требуем аутентификацию для всех запросов к API
+  // Для GET запросов к streams и categories разрешаем доступ всем для просмотра
+  if (req.method === 'GET' && (req.path === '/streams' || req.path === '/categories' || req.path === '/')) {
+    return next()
+  }
+  
+  // Для остальных методов требуем полную аутентификацию
   return requireAuth(req, res, next)
 } 
