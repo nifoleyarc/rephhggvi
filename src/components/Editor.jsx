@@ -1,12 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff, Search, Tag } from 'lucide-react'
+import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff, Search, Tag, User, Link, Hash, Clock, FileText, Settings, RotateCcw, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useTelegram } from '../hooks/useTelegram'
 import { useStreams } from '../hooks/useStreams'
 import { API_CONFIG } from '../utils/api'
 import axios from 'axios'
+
+// Утилита для безопасной обработки дат
+const formatDateSafely = (dateString, formatStr, options = {}) => {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return ''
+    }
+    return format(date, formatStr, options)
+  } catch (error) {
+    console.warn('Invalid date format:', dateString)
+    return ''
+  }
+}
+
+// Утилита для безопасной проверки дат в поиске
+const checkDateMatch = (dateString, query) => {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return false
+    }
+    
+    const shortDate = format(date, 'dd.MM.yy')
+    const longDate = format(date, 'dd MMM yyyy', { locale: ru }).toLowerCase()
+    
+    return shortDate.includes(query) || longDate.includes(query)
+  } catch (error) {
+    console.warn('Invalid date format:', dateString)
+    return false
+  }
+}
 
 const ThumbnailImage = ({ thumbnail }) => {
   const [error, setError] = useState(false)
@@ -48,15 +80,491 @@ const ThumbnailImage = ({ thumbnail }) => {
   )
 }
 
+// Функция для получения цвета тега
+const getTagColor = (tag) => {
+  const tagLower = tag.toLowerCase().replace('#', '')
+  switch (tagLower) {
+    case 'ирл':
+      return 'bg-blue-500/40 text-blue-200'
+    case 'фильм':
+      return 'bg-purple-500/40 text-purple-200'
+    case 'just_chatting':
+      return 'bg-blue-500/40 text-blue-200'
+    case 'игры':
+      return 'bg-red-500/40 text-red-200'
+    case 'контент':
+      return 'bg-green-600/40 text-green-200'
+    case 'шоу':
+      return 'bg-purple-500/40 text-purple-200'
+    case 'кукинг':
+      return 'bg-emerald-500/40 text-emerald-200'
+    case 'марафон':
+      return 'bg-amber-500/40 text-amber-200'
+    default:
+      return 'bg-gray-500/40 text-gray-200'
+  }
+}
+
+// Форма добавления нового стрима
+const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [formData, setFormData] = useState({
+    title: '',
+    streamUrl: '',
+    category: '',
+    tags: '',
+    date: '',
+    thumbnail: ''
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      streamUrl: '',
+      category: '',
+      tags: '',
+      date: '',
+      thumbnail: ''
+    })
+    setIsExpanded(false)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!formData.title.trim() || !formData.streamUrl.trim()) {
+      showToast('Название и ссылка обязательны', 'warning')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const streamData = {
+        ...formData,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      }
+      
+      await onAdd(streamData)
+      resetForm()
+      showToast('Стрим добавлен', 'success')
+      hapticFeedback('notification', 'success')
+    } catch (error) {
+      console.error('Error adding stream:', error)
+      showToast('Ошибка добавления стрима', 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700"
+    >
+      <div 
+        className="flex items-center gap-3 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <Plus size={20} className="text-green-400" />
+        <span className="text-lg font-medium text-white">Добавить новый стрим</span>
+        <motion.div
+          animate={{ rotate: isExpanded ? 45 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Plus size={16} className="text-gray-400" />
+        </motion.div>
+      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            onSubmit={handleSubmit}
+            className="mt-4 space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Название стрима *
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Введите название стрима"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Ссылка на стрим *
+                </label>
+                <input
+                  type="url"
+                  value={formData.streamUrl}
+                  onChange={(e) => setFormData({...formData, streamUrl: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://..."
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Категория
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Выберите категорию</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Дата стрима
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Теги (через запятую)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tags}
+                  onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="игры, контент, ирл"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Превью (URL)
+                </label>
+                <input
+                  type="url"
+                  value={formData.thumbnail}
+                  onChange={(e) => setFormData({...formData, thumbnail: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Save size={16} />
+                )}
+                {isSubmitting ? 'Добавление...' : 'Добавить стрим'}
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+// Карточка стрима для редактирования
+const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete, onRefreshThumbnail, categories, showToast, hapticFeedback }) => {
+  const [editData, setEditData] = useState({
+    title: stream.title || '',
+    streamUrl: stream.streamUrl || '',
+    category: stream.category || '',
+    tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
+    date: stream.date || '',
+    thumbnail: stream.thumbnail || ''
+  })
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditData({
+        title: stream.title || '',
+        streamUrl: stream.streamUrl || '',
+        category: stream.category || '',
+        tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
+        date: stream.date || '',
+        thumbnail: typeof stream.thumbnail === 'object' && stream.thumbnail?.url 
+          ? stream.thumbnail.url 
+          : stream.thumbnail || ''
+      })
+    }
+  }, [isEditing, stream])
+
+  const handleSave = async () => {
+    if (!editData.title.trim()) {
+      showToast('Название обязательно', 'warning')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const streamData = {
+        ...editData,
+        tags: editData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      }
+      
+      await onSave(streamData, stream.id)
+      onCancelEdit()
+      showToast('Стрим обновлен', 'success')
+      hapticFeedback('notification', 'success')
+    } catch (error) {
+      console.error('Error updating stream:', error)
+      showToast('Ошибка обновления стрима', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (window.confirm('Удалить этот стрим?')) {
+      setIsLoading(true)
+      try {
+        await onDelete(stream.id)
+        showToast('Стрим удален', 'success')
+        hapticFeedback('notification', 'success')
+      } catch (error) {
+        console.error('Error deleting stream:', error)
+        showToast('Ошибка удаления стрима', 'error')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  const handleRefreshThumbnail = async () => {
+    setIsLoading(true)
+    try {
+      await onRefreshThumbnail(stream.id)
+      showToast('Превью обновлено', 'success')
+      hapticFeedback('notification', 'success')
+    } catch (error) {
+      console.error('Error refreshing thumbnail:', error)
+      showToast('Ошибка обновления превью', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gray-800 rounded-lg p-4 border border-blue-500"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Название стрима *
+            </label>
+            <input
+              type="text"
+              value={editData.title}
+              onChange={(e) => setEditData({...editData, title: e.target.value})}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Введите название стрима"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Ссылка на стрим
+              </label>
+              <input
+                type="url"
+                value={editData.streamUrl}
+                onChange={(e) => setEditData({...editData, streamUrl: e.target.value})}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Категория
+              </label>
+              <select
+                value={editData.category}
+                onChange={(e) => setEditData({...editData, category: e.target.value})}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Выберите категорию</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Дата стрима
+              </label>
+              <input
+                type="datetime-local"
+                value={editData.date}
+                onChange={(e) => setEditData({...editData, date: e.target.value})}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Теги (через запятую)
+              </label>
+              <input
+                type="text"
+                value={editData.tags}
+                onChange={(e) => setEditData({...editData, tags: e.target.value})}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="игры, контент, ирл"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Превью (URL)
+            </label>
+            <input
+              type="url"
+              value={editData.thumbnail}
+              onChange={(e) => setEditData({...editData, thumbnail: e.target.value})}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="https://..."
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              Сохранить
+            </button>
+            <button
+              onClick={onCancelEdit}
+              disabled={isLoading}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Отмена
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors"
+    >
+      <div className="aspect-video bg-gray-900 relative">
+        <ThumbnailImage thumbnail={stream.thumbnail} />
+        <div className="absolute top-2 right-2 flex gap-1">
+          <button
+            onClick={handleRefreshThumbnail}
+            disabled={isLoading}
+            className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50"
+            title="Обновить превью"
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+          </button>
+          <button
+            onClick={() => onEdit(stream)}
+            disabled={isLoading}
+            className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50"
+            title="Редактировать"
+          >
+            <Edit size={14} />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isLoading}
+            className="p-1.5 bg-black/60 text-red-400 rounded-full hover:bg-black/80 transition-colors disabled:opacity-50"
+            title="Удалить"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <h3 className="text-white font-medium mb-2 line-clamp-2">{stream.title}</h3>
+        
+        <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+          <Calendar size={14} />
+          <span>{formatDateSafely(stream.date, 'dd MMM yyyy, HH:mm', { locale: ru })}</span>
+        </div>
+
+        {stream.tags && stream.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {stream.tags.map((tag, index) => (
+              <span
+                key={index}
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getTagColor(tag)}`}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+// Основной компонент редактора
 const Editor = ({ onClose, showToast, onDataUpdate }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('streams')
   const [editingStream, setEditingStream] = useState(null)
-  const [editingCategory, setEditingCategory] = useState(null)
-  const [refreshingThumbnails, setRefreshingThumbnails] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [isBanned, setIsBanned] = useState(false)
   const [banTimeRemaining, setBanTimeRemaining] = useState(0)
   
@@ -67,9 +575,6 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     addStream, 
     updateStream, 
     deleteStream,
-    addCategory,
-    updateCategory,
-    deleteCategory,
     fetchStreams 
   } = useStreams()
 
@@ -79,10 +584,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
   // Автоматическая аутентификация админа при загрузке
   useEffect(() => {
-    let authAttempted = false // Флаг для предотвращения повторных попыток
+    let authAttempted = false
     
     const tryTelegramAuth = async () => {
-      // Проверяем, что у нас есть данные и мы еще не пытались
       if (authAttempted || !tg || !tg.initData || isAuthenticated) {
         return
       }
@@ -97,54 +601,37 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
           headers: API_CONFIG.getAuthHeaders(tg.initData)
         })
         
-              if (response.data.success && response.data.method === 'telegram') {
-        console.log('Admin auto-authenticated:', response.data.user)
-        setIsAuthenticated(true)
-        setIsBanned(false)
-        setBanTimeRemaining(0)
-        
-        // Сохраняем состояние аутентификации в API_CONFIG
-        API_CONFIG.setAuthState(true, 'telegram', tg.initData)
-        
-        showToast(`Добро пожаловать, ${response.data.user.first_name}!`, 'success')
-        hapticFeedback('notification', 'success')
-      }
+        if (response.data.success && response.data.method === 'telegram') {
+          console.log('Admin auto-authenticated:', response.data.user)
+          setIsAuthenticated(true)
+          setIsBanned(false)
+          setBanTimeRemaining(0)
+          
+          API_CONFIG.setAuthState(true, 'telegram', tg.initData)
+          
+          showToast(`Добро пожаловать, ${response.data.user.first_name}!`, 'success')
+          hapticFeedback('notification', 'success')
+        }
       } catch (error) {
-        // Проверяем на бан при автоматической аутентификации
         if (error.response?.status === 429) {
           const retryAfter = error.response.data.retryAfter || 24
           setIsBanned(true)
           setBanTimeRemaining(retryAfter)
           console.warn('Auto-auth: IP banned for', retryAfter, 'hours')
         } else if (error.response?.status === 403) {
-          // Пользователь не админ - просто показываем форму входа без ошибок
           console.log('User is not admin, showing login form')
         } else {
-          // Другие ошибки автоматической аутентификации
           console.log('Auto-authentication failed:', error.message)
         }
       }
     }
 
-    // Даем время для инициализации Telegram WebApp
     const timer = setTimeout(tryTelegramAuth, 500)
     return () => {
       clearTimeout(timer)
-      authAttempted = false // Сброс при размонтировании
+      authAttempted = false
     }
-  }, [tg?.initData, isAuthenticated]) // Более точные зависимости
-
-  // Защита от автоматического открытия редактирования при первой загрузке
-  const hasLoadedStreamsRef = useRef(false)
-  useEffect(() => {
-    if (streams.length > 0 && !hasLoadedStreamsRef.current) {
-      hasLoadedStreamsRef.current = true
-      // При первой загрузке стримов сбрасываем любое состояние редактирования
-      if (editingStream) {
-        setEditingStream(null)
-      }
-    }
-  }, [streams.length, editingStream])
+  }, [tg?.initData, isAuthenticated])
 
   const handleAuth = async () => {
     if (!password.trim()) {
@@ -154,13 +641,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
     setLoading(true)
     try {
-      // ИСПРАВЛЕНО: Делаем только ОДИН запрос с паролем
-      // Убираем дублирование с Telegram аутентификацией
-      console.log('Attempting password authentication...')
-      
       const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
         password,
-        // Включаем Telegram данные если есть (сервер выберет приоритет)
         ...(tg?.initData && { initData: tg.initData })
       }, {
         headers: API_CONFIG.getAuthHeaders(tg?.initData)
@@ -174,7 +656,6 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         const method = response.data.method
         const userName = response.data.user?.first_name || 'Админ'
         
-        // Сохраняем состояние аутентификации в API_CONFIG
         if (method === 'telegram' && tg?.initData) {
           API_CONFIG.setAuthState(true, 'telegram', tg.initData)
         } else {
@@ -190,7 +671,6 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     } catch (error) {
       console.error('Authentication error:', error)
       
-      // Проверяем на временный бан
       if (error.response?.status === 429) {
         const retryAfter = error.response.data.retryAfter || 24
         setIsBanned(true)
@@ -198,1092 +678,256 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         const minutes = error.response.data.remainingMinutes || (retryAfter * 60)
         const displayTime = minutes > 60 ? `${retryAfter} ч.` : `${minutes} мин.`
         showToast(`Доступ ограничен на ${displayTime}`, 'error')
-        hapticFeedback('notification', 'error')
-      } else if (error.response?.status === 401) {
-        showToast('Неверный пароль', 'error')
-        hapticFeedback('notification', 'error')
       } else {
         showToast('Ошибка аутентификации', 'error')
-        hapticFeedback('notification', 'error')
       }
+      hapticFeedback('notification', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRefreshThumbnails = async () => {
-    setRefreshingThumbnails(true)
+  const handleAddStream = async (streamData) => {
     try {
-      const response = await axios.post(`${API_CONFIG.baseURL}/refresh-thumbnails`, {}, {
-        headers: API_CONFIG.getAuthHeaders(tg?.initData)
-      })
-      if (response.data.success) {
-        showToast(response.data.message, 'success')
-        hapticFeedback('notification', 'success')
-        // Обновляем список стримов после успешного обновления превью
-        await fetchStreams()
-      } else {
-        showToast('Ошибка при обновлении превью', 'error')
-        hapticFeedback('notification', 'error')
-      }
+      await addStream(streamData)
+      fetchStreams()
+      if (onDataUpdate) onDataUpdate()
     } catch (error) {
-      console.error('Error refreshing thumbnails:', error)
-      showToast('Ошибка при обновлении превью', 'error')
-      hapticFeedback('notification', 'error')
-    } finally {
-      setRefreshingThumbnails(false)
+      console.error('Error adding stream:', error)
+      throw error
     }
   }
 
-  const handleRefreshSingleThumbnail = async (streamId) => {
+  const handleUpdateStream = async (streamData, streamId) => {
     try {
-      const response = await axios.post(`${API_CONFIG.baseURL}/refresh-thumbnail`, { streamId }, {
-        headers: API_CONFIG.getAuthHeaders(tg?.initData)
-      })
-      if (response.data.success) {
-        showToast(response.data.message, 'success')
-        hapticFeedback('notification', 'success')
-        // Обновляем список стримов после успешного обновления превью
-        await fetchStreams()
-      } else {
-        showToast(response.data.message || 'Превью не найдено', 'warning')
-        hapticFeedback('notification', 'warning')
-      }
+      await updateStream(streamId, streamData)
+      fetchStreams()
+      if (onDataUpdate) onDataUpdate()
     } catch (error) {
-      console.error('Error refreshing single thumbnail:', error)
-      showToast('Ошибка при обновлении превью', 'error')
-      hapticFeedback('notification', 'error')
+      console.error('Error updating stream:', error)
+      throw error
     }
   }
 
-  const handleStreamSave = async (streamData, streamId = null) => {
-    try {
-      if (editingStream || streamId) {
-        const id = streamId || editingStream._id
-        await updateStream(id, streamData)
-        showToast('Стрим обновлён', 'success')
-        // Закрываем режим редактирования
-        setEditingStream(null)
-      } else {
-        await addStream(streamData)
-        showToast('Стрим добавлен', 'success')
-      }
-      hapticFeedback('notification', 'success')
-    } catch (error) {
-      showToast('Ошибка при сохранении стрима', 'error')
-      hapticFeedback('notification', 'error')
-    }
-  }
-
-  const handleStreamDelete = async (streamId) => {
+  const handleDeleteStream = async (streamId) => {
     try {
       await deleteStream(streamId)
-      showToast('Стрим удалён', 'success')
-      hapticFeedback('notification', 'success')
+      fetchStreams()
+      if (onDataUpdate) onDataUpdate()
     } catch (error) {
-      showToast('Ошибка при удалении стрима', 'error')
-      hapticFeedback('notification', 'error')
+      console.error('Error deleting stream:', error)
+      throw error
     }
   }
 
-  const handleCategorySave = async (categoryData) => {
+  const handleRefreshThumbnail = async (streamId) => {
     try {
-      if (editingCategory) {
-        await updateCategory(editingCategory._id, categoryData)
-        showToast('Категория обновлена', 'success')
-      } else {
-        await addCategory(categoryData)
-        showToast('Категория добавлена', 'success')
+      const response = await axios.post(
+        `${API_CONFIG.baseURL}/streams/${streamId}/refresh-thumbnail`,
+        {},
+        { headers: API_CONFIG.getAuthHeaders() }
+      )
+      
+      if (response.data.success) {
+        fetchStreams()
+        if (onDataUpdate) onDataUpdate()
       }
-      setEditingCategory(null)
-      hapticFeedback('notification', 'success')
     } catch (error) {
-      showToast('Ошибка при сохранении категории', 'error')
-      hapticFeedback('notification', 'error')
+      console.error('Error refreshing thumbnail:', error)
+      throw error
     }
   }
 
-  const handleCategoryDelete = async (categoryId) => {
-    try {
-      await deleteCategory(categoryId)
-      showToast('Категория удалена', 'success')
-      hapticFeedback('notification', 'success')
-    } catch (error) {
-      showToast('Ошибка при удалении категории', 'error')
-      hapticFeedback('notification', 'error')
-    }
-  }
-
-
-  if (isBanned) {
+  // Фильтрация и группировка стримов
+  const filteredStreams = streams.filter(stream => {
+    if (!searchQuery) return true
+    
+    const query = searchQuery.toLowerCase()
     return (
-      <div className="flex items-center justify-center min-h-screen bg-tg-bg text-tg-text p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-tg-secondary-bg rounded-lg p-6 max-w-md w-full text-center"
-        >
-          <h2 className="text-xl font-roobert-bold mb-4 text-red-400">Доступ ограничен</h2>
-          <p className="text-tg-hint font-roobert-regular mb-4">
-            Слишком много неудачных попыток входа. Попробуйте позже.
-          </p>
-          <p className="text-sm text-tg-hint font-roobert-light">
-            Осталось: {Math.floor(banTimeRemaining)} часов
-          </p>
-          <button
-            onClick={() => {
-              // Сбрасываем состояние редактирования при закрытии
-              setEditingStream(null)
-              // Сбрасываем состояние аутентификации
-              API_CONFIG.setAuthState(false, null, null)
-              onClose()
-            }}
-            className="mt-4 px-4 py-2 bg-tg-button text-tg-button-text rounded-lg font-roobert-medium"
-          >
-            Вернуться
-          </button>
-        </motion.div>
-      </div>
+      stream.title?.toLowerCase().includes(query) ||
+      stream.category?.toLowerCase().includes(query) ||
+      stream.tags?.some(tag => tag.toLowerCase().includes(query)) ||
+      checkDateMatch(stream.date, query)
     )
-  }
+  })
 
+  // Группировка по датам
+  const groupedStreams = filteredStreams.reduce((groups, stream) => {
+    const date = formatDateSafely(stream.date, 'dd MMMM yyyy', { locale: ru })
+    if (!groups[date]) {
+      groups[date] = []
+    }
+    groups[date].push(stream)
+    return groups
+  }, {})
+
+  // Сортировка групп по дате (новые сверху)
+  const sortedGroupKeys = Object.keys(groupedStreams).sort((a, b) => {
+    const dateA = new Date(groupedStreams[a][0].date)
+    const dateB = new Date(groupedStreams[b][0].date)
+    return dateB - dateA
+  })
+
+  // Форма аутентификации
   if (!isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-tg-bg text-tg-text p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-tg-secondary-bg rounded-lg p-6 max-w-md w-full"
+          className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4"
         >
-          <h2 className="text-xl font-roobert-bold mb-6 text-center">Вход</h2>
-          
-          <div className="space-y-4">
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Введите пароль"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
-                className="w-full px-4 py-3 bg-tg-bg border border-gray-600 rounded-lg text-tg-text placeholder-tg-hint focus:outline-none focus:border-tg-button font-roobert-light"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-tg-hint hover:text-tg-text"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Вход в редактор</h2>
             <button
-              onClick={handleAuth}
-              disabled={loading}
-              className="w-full bg-tg-button text-tg-button-text py-3 rounded-lg font-roobert-medium disabled:opacity-50"
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
             >
-              {loading ? 'Вход...' : 'Войти'}
+              <X size={24} />
             </button>
           </div>
-        </motion.div>
-      </div>
-    )
-  }
 
-  return (
-    <div className="h-screen bg-tg-bg text-tg-text flex flex-col">
-      {/* Header */}
-      <div className="flex-shrink-0 bg-tg-secondary-bg border-b border-gray-700">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={() => {
-              // Сбрасываем состояние редактирования при закрытии
-              setEditingStream(null)
-              // Сбрасываем состояние аутентификации
-              API_CONFIG.setAuthState(false, null, null)
-              onClose()
-            }}
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-lg font-roobert-bold">Редактор контента</h1>
-          <div />
-        </div>
-        
-        {/* Tabs */}
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('streams')}
-            className={`flex-1 py-3 px-4 text-sm font-roobert-medium transition-colors ${
-              activeTab === 'streams'
-                ? 'bg-tg-button text-tg-button-text'
-                : 'text-tg-hint hover:text-tg-text'
-            }`}
-          >
-            Стримы ({streams.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('categories')}
-            className={`flex-1 py-3 px-4 text-sm font-roobert-medium transition-colors ${
-              activeTab === 'categories'
-                ? 'bg-tg-button text-tg-button-text'
-                : 'text-tg-hint hover:text-tg-text'
-            }`}
-          >
-            Категории ({categories.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        <AnimatePresence mode="wait">
-          {activeTab === 'streams' ? (
-            <StreamsTab
-              key="streams"
-              streams={streams}
-              editingStream={editingStream}
-              setEditingStream={setEditingStream}
-              onSave={handleStreamSave}
-              onDelete={handleStreamDelete}
-              onRefreshThumbnails={handleRefreshThumbnails}
-              onRefreshSingleThumbnail={handleRefreshSingleThumbnail}
-              refreshingThumbnails={refreshingThumbnails}
-
-              showToast={showToast}
-              hapticFeedback={hapticFeedback}
-              onDataUpdate={onDataUpdate}
-            />
-          ) : (
-            <CategoriesTab
-              key="categories"
-              categories={categories}
-              editingCategory={editingCategory}
-              setEditingCategory={setEditingCategory}
-              onSave={handleCategorySave}
-              onDelete={handleCategoryDelete}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  )
-}
-
-// Компонент для редактирования стримов (на основе StreamList)
-const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete, onRefreshThumbnails, onRefreshSingleThumbnail, refreshingThumbnails, showToast, hapticFeedback, onDataUpdate }) => {
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [refreshingSingle, setRefreshingSingle] = useState({})
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [sortBy, setSortBy] = useState('date')
-  const [sortOrder, setSortOrder] = useState('desc')
-  const [addFormData, setAddFormData] = useState({
-    title: '',
-    date: '',
-    time: '12:00', // Время по умолчанию
-    tags: '',
-    telegramUrl: '',
-    thumbnail: ''
-  })
-
-  const handleAddSubmit = (e) => {
-    e.preventDefault()
-    
-    // Объединяем дату и время в один объект Date
-    const dateTime = new Date(`${addFormData.date}T${addFormData.time}:00`)
-    
-    const streamData = {
-      ...addFormData,
-      date: dateTime.toISOString(), // Сохраняем как ISO строку с временем
-      tags: addFormData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-    }
-    
-    // Убираем отдельное поле времени из данных
-    delete streamData.time
-    
-    onSave(streamData)
-    // Очищаем форму и закрываем её
-    setAddFormData({
-      title: '',
-      date: '',
-      time: '12:00',
-      tags: '',
-      telegramUrl: '',
-      thumbnail: ''
-    })
-    // Закрываем форму после добавления
-    setShowAddForm(false)
-  }
-
-  const handleRefreshSingle = async (streamId) => {
-    setRefreshingSingle(prev => ({ ...prev, [streamId]: true }))
-    try {
-      await onRefreshSingleThumbnail(streamId)
-    } finally {
-      setRefreshingSingle(prev => ({ ...prev, [streamId]: false }))
-    }
-  }
-
-  // Функции для работы с категориями и сортировкой (из StreamList)
-  const getCategoryCount = (categoryId) => {
-    if (categoryId === 'all') return streams.length
-    return streams.filter(stream => 
-      stream.categories?.includes(categoryId) ||
-      stream.tags?.some(tag => tag.toLowerCase().includes(categoryId.toLowerCase()))
-    ).length
-  }
-
-  const allCategories = [
-    { id: 'all', name: '📺 Все', count: getCategoryCount('all') },
-    { id: 'фильм', name: '🍿 Фильмы / Мультики', count: getCategoryCount('фильм') },
-    { id: 'ирл', name: '🗺️ ИРЛ стримы', count: getCategoryCount('ирл') },
-    { id: 'контент', name: '👀 Контент', count: getCategoryCount('контент') },
-    { id: 'игры', name: '🎮 Игровые стримы', count: getCategoryCount('игры') },
-    { id: 'just_chatting', name: '💬 Общение / Видосы', count: getCategoryCount('just_chatting') },
-    { id: 'шоу', name: '🎭 ШОУ', count: getCategoryCount('шоу') },
-    { id: 'кукинг', name: '🍳 Кукинги', count: getCategoryCount('кукинг') },
-    { id: 'марафон', name: '🏅 Марафоны', count: getCategoryCount('марафон') },
-  ]
-
-  const getTagColor = (tag) => {
-    const tagLower = tag.toLowerCase().replace('#', '')
-    switch (tagLower) {
-      case 'ирл':
-        return 'bg-blue-500/40 text-blue-200'
-      case 'фильм':
-        return 'bg-purple-500/40 text-purple-200'
-      case 'just_chatting':
-        return 'bg-blue-500/40 text-blue-200'
-      case 'игры':
-        return 'bg-red-500/40 text-red-200'
-      case 'контент':
-        return 'bg-green-600/40 text-green-200'
-      case 'шоу':
-        return 'bg-purple-500/40 text-purple-200'
-      case 'кукинг':
-        return 'bg-emerald-500/40 text-emerald-200'
-      case 'марафон':
-        return 'bg-amber-500/40 text-amber-200'
-      default:
-        return 'bg-gray-500/40 text-gray-200'
-    }
-  }
-
-  const getCategoryColor = (categoryId) => {
-    switch (categoryId) {
-      case 'фильм':
-        return 'bg-purple-600 text-white hover:bg-purple-500'
-      case 'just_chatting':
-        return 'text-white hover:opacity-90 bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-500'
-      case 'ирл':
-        return 'bg-blue-600 text-white hover:bg-blue-500'
-      case 'игры':
-        return 'bg-red-600 text-white hover:bg-red-500'
-      case 'контент':
-        return 'bg-green-600 text-white hover:bg-green-500'
-      case 'шоу':
-        return 'text-white hover:opacity-90 bg-gradient-to-r from-purple-500 via-violet-600 to-fuchsia-500'
-      case 'кукинг':
-        return 'text-white hover:opacity-90 bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-400'
-      case 'марафон':
-        return 'text-white hover:opacity-90 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400'
-      case 'all':
-      default:
-        return 'bg-blue-600 text-white hover:bg-blue-500'
-    }
-  }
-
-  const formatDateSafely = (dateString, formatStr, options = {}) => {
-    try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) {
-        return ''
-      }
-      return format(date, formatStr, options)
-    } catch (error) {
-      console.warn('Invalid date format:', dateString)
-      return ''
-    }
-  }
-
-  const checkDateMatch = (dateString, query) => {
-    try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) {
-        return false
-      }
-      
-      const shortDate = date.toLocaleDateString('ru')
-      return shortDate.includes(query)
-    } catch (error) {
-      console.warn('Invalid date format:', dateString)
-      return false
-    }
-  }
-
-  const handleSortChange = (newSortBy) => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(newSortBy)
-      setSortOrder('desc')
-    }
-  }
-
-  // Фильтрация и сортировка стримов (из StreamList)
-  const filteredAndSortedStreams = streams.filter(stream => {
-    // Фильтрация по категории
-    if (selectedCategory !== 'all') {
-      const categoryMatch = stream.categories?.includes(selectedCategory) ||
-        stream.tags?.some(tag => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
-      if (!categoryMatch) return false
-    }
-
-    // Фильтрация по поиску
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      const titleMatch = stream.title?.toLowerCase().includes(query)
-      const tagsMatch = stream.tags?.some(tag => tag.toLowerCase().includes(query))
-      const dateMatch = checkDateMatch(stream.date, query)
-      
-      return titleMatch || tagsMatch || dateMatch
-    }
-
-    return true
-  }).sort((a, b) => {
-    let comparison = 0
-    
-    if (sortBy === 'date') {
-      comparison = new Date(a.date) - new Date(b.date)
-    } else if (sortBy === 'name') {
-      comparison = a.title.localeCompare(b.title)
-    }
-    
-    return sortOrder === 'desc' ? -comparison : comparison
-  })
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="h-full overflow-auto"
-    >
-      {/* Кнопка добавления + форма */}
-      <div className="px-4 py-3 bg-tg-secondary-bg border-b border-gray-700">
-        {!showAddForm ? (
-          <div className="text-center">
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-roobert-medium transition-colors"
-            >
-              <Plus size={20} />
-              Добавить новый стрим
-            </button>
-          </div>
-        ) : (
-          <div className="bg-green-900/20 border border-green-700 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-roobert-bold text-lg text-green-400">Добавить новый стрим</h3>
-              <button
-                onClick={() => setShowAddForm(false)}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Название стрима"
-                value={addFormData.title}
-                onChange={(e) => setAddFormData({ ...addFormData, title: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-green-500 focus:outline-none"
-                required
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="date"
-                  value={addFormData.date}
-                  onChange={(e) => setAddFormData({ ...addFormData, date: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular border-2 border-transparent focus:border-green-500 focus:outline-none"
-                  required
-                />
-                
-                <input
-                  type="time"
-                  value={addFormData.time}
-                  onChange={(e) => setAddFormData({ ...addFormData, time: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular border-2 border-transparent focus:border-green-500 focus:outline-none"
-                />
+          {isBanned ? (
+            <div className="text-center py-4">
+              <div className="text-red-400 mb-2">
+                <Settings size={48} className="mx-auto mb-2" />
+                <p className="text-lg font-medium">Доступ временно ограничен</p>
+                <p className="text-sm mt-1">
+                  Попробуйте через {banTimeRemaining} ч.
+                </p>
               </div>
-              
-              <input
-                type="text"
-                placeholder="Теги (через запятую: #игры, #стрим, #развлечения)"
-                value={addFormData.tags}
-                onChange={(e) => setAddFormData({ ...addFormData, tags: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-green-500 focus:outline-none"
-              />
-              
-              <input
-                type="url"
-                placeholder="Ссылка на пост в Telegram"
-                value={addFormData.telegramUrl}
-                onChange={(e) => setAddFormData({ ...addFormData, telegramUrl: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-green-500 focus:outline-none"
-                required
-              />
-              
-              <input
-                type="url"
-                placeholder="URL превью (опционально)"
-                value={addFormData.thumbnail}
-                onChange={(e) => setAddFormData({ ...addFormData, thumbnail: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-green-500 focus:outline-none"
-              />
-              
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-roobert-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <Save size={18} />
-                  Добавить стрим
-                </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
+                  placeholder="Пароль администратора"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
                 <button
                   type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg font-roobert-medium transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
                 >
-                  Отмена
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
-            </form>
-          </div>
-        )}
-      </div>
 
-      {/* Категории */}
-      <div className="py-3">
-        <motion.div 
-          className="flex gap-3 overflow-x-auto px-4 pb-6"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {allCategories.map((category, index) => (
-            <motion.button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-roobert-medium transition-colors ${
-                selectedCategory === category.id 
-                  ? getCategoryColor(category.id)
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-            >
-              {category.name}
-              {category.count > 0 && (
-                <span className="ml-2 text-sm opacity-50">({category.count})</span>
-              )}
-            </motion.button>
-          ))}
+              <button
+                onClick={handleAuth}
+                disabled={loading}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <User size={20} />
+                )}
+                {loading ? 'Вход...' : 'Войти'}
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
-
-      {/* Поиск и сортировка */}
-      <div className="px-4 space-y-4 pt-4">
-        {/* Поиск */}
-        <div className="relative bg-tg-secondary-bg/50 border-2 border-gray-600/50 rounded-lg p-1">
-          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-tg-hint" />
-          <input
-            type="text"
-            placeholder="Поиск по названию, тегам, дате..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 bg-transparent text-sm text-tg-text placeholder-tg-hint focus:outline-none font-roobert-light"
-          />
-          {searchQuery.trim() && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-600 transition-colors"
-            >
-              <X size={14} className="text-tg-hint" />
-            </button>
-          )}
-        </div>
-        
-        {/* Счетчик результатов */}
-        {searchQuery.trim() && (
-          <div className="text-sm text-tg-hint font-roobert-light">
-            Найдено: {filteredAndSortedStreams.length} из {streams.length}
-          </div>
-        )}
-
-        {/* Сортировка */}
-        <div className="flex gap-2 text-base">
-          <span className="text-tg-hint font-roobert-light">Сортировка:</span>
-          {[
-            { key: 'date', label: 'По дате' },
-            { key: 'name', label: 'По названию' }
-          ].map((sort) => (
-            <button
-              key={sort.key}
-              onClick={() => handleSortChange(sort.key)}
-              className={`px-4 py-1 rounded text-sm font-roobert-light transition-colors ${
-                sortBy === sort.key
-                  ? 'bg-tg-button text-tg-button-text'
-                  : 'text-tg-hint hover:text-tg-text'
-              }`}
-            >
-              {sort.label}
-              {sortBy === sort.key && (
-                <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Кнопка обновления превью */}
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-tg-hint font-roobert-light">
-            Всего стримов: {streams.length}
-          </div>
-          <button
-            onClick={onRefreshThumbnails}
-            disabled={refreshingThumbnails}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-200 rounded-lg font-roobert-regular text-sm transition-colors"
-          >
-            <RefreshCw size={14} className={refreshingThumbnails ? 'animate-spin' : ''} />
-            {refreshingThumbnails ? 'Обновляем...' : 'Обновить превью'}
-          </button>
-        </div>
-
-        {/* Список стримов */}
-        <div className="grid gap-3">
-          {filteredAndSortedStreams.map((stream) => (
-            <StreamCard 
-              key={stream._id}
-              stream={stream}
-              isEditing={editingStream?._id === stream._id}
-              onEdit={() => setEditingStream(stream)}
-              onCancelEdit={() => setEditingStream(null)}
-              onSave={onSave}
-              onDelete={() => onDelete(stream._id)}
-              onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
-              isRefreshing={refreshingSingle[stream._id]}
-            />
-          ))}
-        </div>
-
-        {filteredAndSortedStreams.length === 0 && (
-          <div className="text-center py-8 text-tg-hint">
-            <Play size={48} className="mx-auto mb-2 opacity-50" />
-            <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  )
-}
-
-// Компонент карточки стрима с inline редактированием (на основе StreamList)
-const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete, onRefreshThumbnail, isRefreshing }) => {
-  const [editData, setEditData] = useState({
-    title: '',
-    date: '',
-    time: '12:00',
-    tags: '',
-    telegramUrl: '',
-    thumbnail: ''
-  })
-
-  useEffect(() => {
-    if (isEditing) {
-      // Извлекаем URL из объекта thumbnail или используем строку напрямую
-      const thumbnailUrl = typeof stream.thumbnail === 'object' && stream.thumbnail?.url 
-        ? stream.thumbnail.url 
-        : typeof stream.thumbnail === 'string' 
-        ? stream.thumbnail 
-        : ''
-      
-      // Парсим дату и время из ISO строки
-      const streamDate = new Date(stream.date)
-      const dateStr = streamDate.toISOString().split('T')[0]
-      const timeStr = streamDate.toTimeString().slice(0, 5) // HH:MM
-      
-      setEditData({
-        title: stream.title || '',
-        date: dateStr,
-        time: timeStr,
-        tags: stream.tags ? stream.tags.join(', ') : '',
-        telegramUrl: stream.telegramUrl || '',
-        thumbnail: thumbnailUrl
-      })
-    }
-  }, [isEditing, stream])
-
-  const handleSave = () => {
-    // Объединяем дату и время в один объект Date
-    const dateTime = new Date(`${editData.date}T${editData.time}:00`)
-    
-    const streamData = {
-      ...editData,
-      date: dateTime.toISOString(), // Сохраняем как ISO строку с временем
-      tags: editData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-    }
-    
-    // Убираем отдельное поле времени из данных
-    delete streamData.time
-    
-    onSave(streamData, stream._id)
-    onCancelEdit()
-  }
-
-  const getTagColor = (tag) => {
-    const tagLower = tag.toLowerCase().replace('#', '')
-    switch (tagLower) {
-      case 'ирл':
-        return 'bg-blue-500/40 text-blue-200'
-      case 'фильм':
-        return 'bg-purple-500/40 text-purple-200'
-      case 'just_chatting':
-        return 'bg-blue-500/40 text-blue-200'
-      case 'игры':
-        return 'bg-red-500/40 text-red-200'
-      case 'контент':
-        return 'bg-green-600/40 text-green-200'
-      case 'шоу':
-        return 'bg-purple-500/40 text-purple-200'
-      case 'кукинг':
-        return 'bg-emerald-500/40 text-emerald-200'
-      case 'марафон':
-        return 'bg-amber-500/40 text-amber-200'
-      default:
-        return 'bg-gray-500/40 text-gray-200'
-    }
-  }
-
-  const formatDateSafely = (dateString) => {
-    try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) {
-        return 'Неизвестная дата'
-      }
-      return format(date, 'dd MMM yyyy', { locale: ru })
-    } catch (error) {
-      console.warn('Invalid date format:', dateString)
-      return 'Неизвестная дата'
-    }
-  }
-
-  if (isEditing) {
-    return (
-      <motion.div
-        initial={{ scale: 0.98 }}
-        animate={{ scale: 1 }}
-        className="bg-yellow-900/20 border-2 border-yellow-600/50 rounded-xl p-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-roobert-bold text-lg text-yellow-400">Редактирование стрима</h3>
-          <button
-            onClick={onCancelEdit}
-            className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="Название стрима"
-            value={editData.title}
-            onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-            className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-yellow-500 focus:outline-none"
-            required
-          />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="date"
-              value={editData.date}
-              onChange={(e) => setEditData({ ...editData, date: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular border-2 border-transparent focus:border-yellow-500 focus:outline-none"
-              required
-            />
-            
-            <input
-              type="time"
-              value={editData.time}
-              onChange={(e) => setEditData({ ...editData, time: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular border-2 border-transparent focus:border-yellow-500 focus:outline-none"
-            />
-          </div>
-          
-          <input
-            type="text"
-            placeholder="Теги (через запятую)"
-            value={editData.tags}
-            onChange={(e) => setEditData({ ...editData, tags: e.target.value })}
-            className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-yellow-500 focus:outline-none"
-          />
-          
-          <input
-            type="url"
-            placeholder="Ссылка на пост в Telegram"
-            value={editData.telegramUrl}
-            onChange={(e) => setEditData({ ...editData, telegramUrl: e.target.value })}
-            className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-yellow-500 focus:outline-none"
-            required
-          />
-          
-          <input
-            type="url"
-            placeholder="URL превью (опционально)"
-            value={editData.thumbnail}
-            onChange={(e) => setEditData({ ...editData, thumbnail: e.target.value })}
-            className="w-full px-4 py-3 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light border-2 border-transparent focus:border-yellow-500 focus:outline-none"
-          />
-          
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={handleSave}
-              className="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-roobert-medium transition-colors flex items-center justify-center gap-2"
-            >
-              <Save size={18} />
-              Сохранить изменения
-            </button>
-            <button
-              onClick={onCancelEdit}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg font-roobert-medium transition-colors"
-            >
-              Отмена
-            </button>
-          </div>
-        </div>
-      </motion.div>
     )
   }
 
-  // Обычный режим просмотра (как в StreamList)
+  // Основной интерфейс редактора
   return (
-    <div className="stream-card group">
-      <div className="flex gap-4 py-3 pr-3">
-        {/* Превью */}
-        <div className="relative w-36 h-20 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
-          {stream.thumbnail ? (
-            <ThumbnailImage thumbnail={stream.thumbnail} />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Play size={24} className="text-gray-400" />
-            </div>
-          )}
-          
-          {/* Кнопки управления поверх превью (показываются при hover) */}
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onRefreshThumbnail()
-              }}
-              disabled={isRefreshing}
-              className="p-1.5 bg-green-600/80 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Обновить превью"
-            >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-            </button>
-            
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit()
-              }}
-              className="p-1.5 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition-colors"
-              title="Редактировать"
-            >
-              <Edit size={14} />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-              }}
-              className="p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors"
-              title="Удалить"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        </div>
-
-        {/* Информация о стриме */}
-        <div className="flex-1 min-w-0 -mt-[3.5px]">
-          <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
-            {stream.title}
-          </h3>
-          
-          <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
-            <Calendar size={16} />
-            <span className="font-roobert-regular">
-              {formatDateSafely(stream.date)}
-            </span>
-          </div>
-
-          {stream.tags && stream.tags.length > 0 && (
-            <div className="flex items-center gap-1 text-sm">
-              <Tag size={14} />
-              <div className="flex gap-1 overflow-hidden">
-                {stream.tags.slice(0, 3).map((tag, tagIndex) => (
-                  <span
-                    key={tagIndex}
-                    className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                  >
-                    {tag.replace('#', '')}
-                  </span>
-                ))}
-                {stream.tags.length > 3 && (
-                  <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Компонент для редактирования категорий  
-const CategoriesTab = ({ categories, editingCategory, setEditingCategory, onSave, onDelete }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    tag: '',
-    color: '#2481cc'
-  })
-
-  useEffect(() => {
-    if (editingCategory) {
-      setFormData({
-        name: editingCategory.name || '',
-        tag: editingCategory.tag || '',
-        color: editingCategory.color || '#2481cc'
-      })
-    } else {
-      setFormData({
-        name: '',
-        tag: '',
-        color: '#2481cc'
-      })
-    }
-  }, [editingCategory])
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSave(formData)
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="h-full overflow-auto p-4 space-y-4"
-    >
-      {/* Форма добавления/редактирования категорий */}
-      <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-        <h3 className="font-roobert-medium mb-4">
-          {editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
-        </h3>
-        
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="text"
-            placeholder="Название категории"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light"
-            required
-          />
-          
-          <input
-            type="text"
-            placeholder="Связанный тег (например: #игры)"
-            value={formData.tag}
-            onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
-            className="w-full px-3 py-2 bg-gray-700 rounded-lg text-sm font-roobert-regular placeholder:font-roobert-light"
-            required
-          />
-          
-          <div className="flex gap-2 items-center">
-            <input
-              type="color"
-              value={formData.color}
-              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              className="w-10 h-8 rounded border border-gray-300"
-            />
-            <span className="text-sm text-gray-500 font-roobert-light">Цвет категории</span>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 py-2 bg-tg-button text-tg-button-text rounded-lg text-sm font-roobert-medium"
-            >
-              <Save size={16} className="inline mr-1" />
-              Сохранить
-            </button>
-            {editingCategory && (
-              <button
-                type="button"
-                onClick={() => setEditingCategory(null)}
-                className="px-4 py-2 bg-gray-600 rounded-lg text-sm font-roobert-medium"
-              >
-                Отмена
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* Список категорий */}
-      <div className="space-y-2">
-        {categories.map((category) => (
-          <div
-            key={category._id}
-            className="bg-gray-800 rounded-lg p-3 border border-gray-700"
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gray-900 rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-hidden"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <h2 className="text-xl font-bold text-white">Редактор стримов</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h4 className="font-roobert-medium text-sm">{category.name}</h4>
-                <p className="text-xs text-gray-500 font-roobert-regular">{category.tag}</p>
-              </div>
-              <div className="flex gap-1 ml-2">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          {/* Форма добавления */}
+          <AddStreamForm
+            onAdd={handleAddStream}
+            categories={categories}
+            showToast={showToast}
+            hapticFeedback={hapticFeedback}
+          />
+
+          {/* Поиск */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search size={20} className="absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск по названию, категории, тегам или дате..."
+                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery && (
                 <button
-                  onClick={() => setEditingCategory(category)}
-                  className="p-1.5 text-blue-600 hover:bg-blue-900/20 rounded"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
                 >
-                  <Edit size={14} />
+                  <X size={20} />
                 </button>
-                <button
-                  onClick={() => onDelete(category._id)}
-                  className="p-1.5 text-red-600 hover:bg-red-900/20 rounded"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
+              )}
             </div>
           </div>
-        ))}
-      </div>
-    </motion.div>
+
+          {/* Список стримов по группам */}
+          {sortedGroupKeys.length > 0 ? (
+            <div className="space-y-6">
+              {sortedGroupKeys.map(dateGroup => (
+                <div key={dateGroup}>
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Calendar size={20} />
+                    {dateGroup}
+                    <span className="text-sm text-gray-400">
+                      ({groupedStreams[dateGroup].length} стрим{groupedStreams[dateGroup].length === 1 ? '' : groupedStreams[dateGroup].length < 5 ? 'а' : 'ов'})
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {groupedStreams[dateGroup].map(stream => (
+                      <StreamCard
+                        key={stream.id}
+                        stream={stream}
+                        isEditing={editingStream?.id === stream.id}
+                        onEdit={setEditingStream}
+                        onCancelEdit={() => setEditingStream(null)}
+                        onSave={handleUpdateStream}
+                        onDelete={handleDeleteStream}
+                        onRefreshThumbnail={handleRefreshThumbnail}
+                        categories={categories}
+                        showToast={showToast}
+                        hapticFeedback={hapticFeedback}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Search size={48} className="mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-400">
+                {searchQuery ? 'Стримы не найдены' : 'Нет стримов для отображения'}
+              </p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
   )
 }
 
