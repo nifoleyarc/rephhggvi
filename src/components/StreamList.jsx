@@ -5,6 +5,38 @@ import { ru } from 'date-fns/locale'
 import { Play, Calendar, Tag, Search, X } from 'lucide-react'
 import { useTelegram } from '../hooks/useTelegram'
 
+// Утилита для безопасной обработки дат
+const formatDateSafely = (dateString, formatStr, options = {}) => {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return ''
+    }
+    return format(date, formatStr, options)
+  } catch (error) {
+    console.warn('Invalid date format:', dateString)
+    return ''
+  }
+}
+
+// Утилита для безопасной проверки дат в поиске
+const checkDateMatch = (dateString, query) => {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return false
+    }
+    
+    const shortDate = format(date, 'dd.MM.yy')
+    const longDate = format(date, 'dd MMM yyyy', { locale: ru }).toLowerCase()
+    
+    return shortDate.includes(query) || longDate.includes(query)
+  } catch (error) {
+    console.warn('Invalid date format:', dateString)
+    return false
+  }
+}
+
 const ThumbnailImage = ({ thumbnail }) => {
   const [error, setError] = useState(false)
 
@@ -204,9 +236,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         const query = searchQuery.toLowerCase().trim()
         const titleMatch = stream.title.toLowerCase().includes(query)
         const tagsMatch = stream.tags?.some(tag => tag.toLowerCase().includes(query))
-        const streamDate = new Date(stream.date)
-        const dateMatch = format(streamDate, 'dd.MM.yy').includes(query) ||
-                         format(streamDate, 'dd MMM yyyy', { locale: ru }).toLowerCase().includes(query)
+        const dateMatch = checkDateMatch(stream.date, query)
         
         return titleMatch || tagsMatch || dateMatch
       })
@@ -216,9 +246,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         const query = searchQuery.toLowerCase().trim()
         const titleMatch = stream.title.toLowerCase().includes(query)
         const tagsMatch = stream.tags?.some(tag => tag.toLowerCase().includes(query))
-        const streamDate = new Date(stream.date)
-        const dateMatch = format(streamDate, 'dd.MM.yy').includes(query) ||
-                         format(streamDate, 'dd MMM yyyy', { locale: ru }).toLowerCase().includes(query)
+        const dateMatch = checkDateMatch(stream.date, query)
         
         return titleMatch || tagsMatch || dateMatch
       })
@@ -284,9 +312,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         )
         
         // Расширенный поиск по дате
-        const streamDate = new Date(stream.date)
-        const dateMatch = format(streamDate, 'dd.MM.yy').includes(query) ||
-                         format(streamDate, 'dd MMM yyyy', { locale: ru }).toLowerCase().includes(query)
+        const dateMatch = checkDateMatch(stream.date, query)
         
         // Поиск по месяцам (сокращения и полные названия)
         const monthMap = {
@@ -296,22 +322,31 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         }
         
         let monthMatch = false
-        const fullMonth = format(streamDate, 'LLLL', { locale: ru }).toLowerCase()
-        const shortMonth = format(streamDate, 'LLL', { locale: ru }).toLowerCase()
         
-        // Проверяем прямое совпадение с полным или коротким названием месяца
-        if (fullMonth.includes(query) || shortMonth.includes(query)) {
-          monthMatch = true
-        }
-        
-        // Проверяем сокращения
-        for (const [abbr, full] of Object.entries(monthMap)) {
-          if (query === abbr || query === full) {
-            if (fullMonth === full) {
+        // Безопасная проверка месяцев
+        try {
+          const streamDate = new Date(stream.date)
+          if (!isNaN(streamDate.getTime())) {
+            const fullMonth = format(streamDate, 'LLLL', { locale: ru }).toLowerCase()
+            const shortMonth = format(streamDate, 'LLL', { locale: ru }).toLowerCase()
+            
+            // Проверяем прямое совпадение с полным или коротким названием месяца
+            if (fullMonth.includes(query) || shortMonth.includes(query)) {
               monthMatch = true
-              break
+            }
+            
+            // Проверяем сокращения
+            for (const [abbr, full] of Object.entries(monthMap)) {
+              if (query === abbr || query === full) {
+                if (fullMonth === full) {
+                  monthMatch = true
+                  break
+                }
+              }
             }
           }
+        } catch (error) {
+          console.warn('Invalid date format for month check:', stream.date)
         }
         
         return titleMatch || tagsMatch || dateMatch || monthMatch
@@ -614,7 +649,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                 <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
                   <Calendar size={16} />
                   <span className="font-roobert-regular">
-                    {format(new Date(stream.date), 'dd MMM yyyy', { locale: ru })}
+                    {formatDateSafely(stream.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
                   </span>
                 </div>
 
@@ -801,7 +836,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                 <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
                   <Calendar size={16} />
                   <span className="font-roobert-regular">
-                    {format(new Date(stream.date), 'dd MMM yyyy', { locale: ru })}
+                    {formatDateSafely(stream.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
                   </span>
                 </div>
 

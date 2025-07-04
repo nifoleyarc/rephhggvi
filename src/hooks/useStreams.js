@@ -69,7 +69,15 @@ export function useStreams() {
       const params = category ? { category } : {}
       const response = await axios.get(`${API_BASE}/streams`, { params })
       console.log('✅ API connected successfully!')
-      setStreams(response.data.streams || [])
+      
+      // Трансформируем данные для совместимости с компонентами
+      const transformedStreams = (response.data.streams || []).map(stream => ({
+        ...stream,
+        date: stream.stream_date, // Преобразуем stream_date в date
+        telegramUrl: stream.telegram_url // Преобразуем telegram_url в telegramUrl
+      }))
+      
+      setStreams(transformedStreams)
       setCategories(response.data.categories || [])
     } catch (err) {
       setError(err.message)
