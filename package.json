@@ -22,6 +22,8 @@
     "test": "echo 'No tests configured'",
     "diagnose:webhook": "node scripts/diagnose-webhook.js",
     "test:webhook": "node scripts/test-webhook.js",
+    "test:webhook-advanced": "node scripts/test-webhook-advanced.js",
+    "check:webhook-quick": "node scripts/quick-webhook-check.js",
     "get:user-id": "node scripts/get-user-id.js",
     "check:webhook": "node scripts/check-webhook-status.js",
     "test:auth": "node scripts/test-auth.js",

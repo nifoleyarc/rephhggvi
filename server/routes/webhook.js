@@ -10,6 +10,7 @@ const router = express.Router()
 
 // Маппинг тегов на категории (согласно требованиям)
 const CATEGORY_MAPPING = {
+  // Основные категории
   '#just_chatting': 'just_chatting',
   '#ирл': 'irl', 
   '#фильм': 'movies',
@@ -24,21 +25,43 @@ const CATEGORY_MAPPING = {
   '#фильмы': 'movies',
   '#мультик': 'movies', 
   '#мультики': 'movies',
+  '#мультфильм': 'movies',
+  '#кино': 'movies',
+  
   '#игра': 'gaming',
   '#gaming': 'gaming',
   '#game': 'gaming',
+  '#геймс': 'gaming',
+  '#play': 'gaming',
+  
   '#irl': 'irl',
+  '#real': 'irl',
+  '#жизнь': 'irl',
+  
   '#cooking': 'cooking',
   '#готовка': 'cooking',
+  '#кухня': 'cooking',
+  '#еда': 'cooking',
+  
   '#marathon': 'marathon',
+  '#марик': 'marathon',
+  '#долгий': 'marathon',
+  
   '#show': 'show',
+  '#шоу': 'show',
+  '#program': 'show',
+  '#программа': 'show',
+  
+  '#content': 'content',
+  '#видео': 'content',
+  '#video': 'content',
   
   // Fallback категория
   DEFAULT: 'just_chatting'
 }
 
 // Регулярные выражения
-const TAG_REGEX = /#[a-zA-Z0-9а-яё_]+/gi
+const TAG_REGEX = /#[a-zA-Z0-9а-яёА-ЯЁ_]+/gi // Поддержка всех русских букв + регистр
 const DATE_REGEX = /\b\d{1,2}\.\d{1,2}\.(\d{2}|\d{4})\b/
 
 // ============================================================================
@@ -89,10 +112,19 @@ function parsePost(channelPost) {
     console.log(`   🏷️ Найден тег: ${normalizedTag}`)
   })
   
-  // Определяем категорию по последнему тегу
-  const lastTag = tags[tags.length - 1]
-  const category = CATEGORY_MAPPING[lastTag] || CATEGORY_MAPPING.DEFAULT
-  console.log(`   📂 Категория: ${category} (по тегу ${lastTag})`)
+  // Определяем категорию по первому найденному тегу (по приоритету)
+  let category = CATEGORY_MAPPING.DEFAULT
+  for (const tag of tags) {
+    if (CATEGORY_MAPPING[tag]) {
+      category = CATEGORY_MAPPING[tag]
+      console.log(`   📂 Категория: ${category} (по тегу ${tag})`)
+      break
+    }
+  }
+  
+  if (category === CATEGORY_MAPPING.DEFAULT) {
+    console.log(`   📂 Категория: ${category} (по умолчанию, теги не распознаны: ${tags.join(', ')})`)
+  }
   
   // Извлекаем название стрима (первая строка без тегов)
   const lines = text.split('\n').map(line => line.trim()).filter(line => line)
@@ -128,13 +160,20 @@ function parsePost(channelPost) {
     }
   }
   
-  // Если дата не найдена, используем дату поста
+  // Если дата не найдена, используем дату поста в UTC+5
   if (!streamDate) {
     const postDate = new Date(channelPost.date * 1000)
-    streamDate = postDate.toISOString().split('T')[0]
-    console.log(`   📅 Используем дату поста: ${streamDate}`)
+    // Добавляем 5 часов для UTC+5
+    const utc5Date = new Date(postDate.getTime() + (5 * 60 * 60 * 1000))
+    streamDate = utc5Date.toISOString()
+    console.log(`   📅 Используем дату поста (UTC+5): ${streamDate}`)
   } else {
-    console.log(`   📅 Дата стрима: ${streamDate}`)
+    // Парсим найденную дату и устанавливаем время как текущее в UTC+5
+    const currentTime = new Date()
+    const utc5Time = new Date(currentTime.getTime() + (5 * 60 * 60 * 1000))
+    const timeString = utc5Time.toISOString().split('T')[1] // Берем только время
+    streamDate = streamDate + 'T' + timeString
+    console.log(`   📅 Дата стрима (UTC+5): ${streamDate}`)
   }
   
   return {
@@ -220,9 +259,10 @@ router.post('/', async (req, res) => {
     const result = await db.run(`
       INSERT INTO streams (
         title, telegram_url, stream_date, tags, categories,
-        thumbnail_url, thumbnail_source, thumbnail_s3_key, thumbnail_updated_at,
-        message_id, chat_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        thumbnail_url, thumbnail_source, thumbnail_public_id, 
+        thumbnail_width, thumbnail_height, thumbnail_format, thumbnail_bytes,
+        thumbnail_updated_at, message_id, chat_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `, [
       streamData.title,
       telegramUrl,
@@ -231,7 +271,11 @@ router.post('/', async (req, res) => {
       JSON.stringify(streamData.categories),
       thumbnailData?.url || null,
       thumbnailData?.source || null,
-      thumbnailData?.s3Key || null,
+      thumbnailData?.publicId || null,
+      thumbnailData?.width || null,
+      thumbnailData?.height || null,
+      thumbnailData?.format || null,
+      thumbnailData?.bytes || null,
       thumbnailData ? new Date().toISOString() : null,
       streamData.messageId,
       streamData.chatId
