@@ -868,18 +868,17 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
         {/* Список стримов */}
         <div className="grid gap-3">
           {filteredAndSortedStreams.map((stream) => (
-            <div key={stream._id} className="stream-card">
-              <StreamCard 
-                stream={stream}
-                isEditing={editingStream?._id === stream._id}
-                onEdit={() => setEditingStream(stream)}
-                onCancelEdit={() => setEditingStream(null)}
-                onSave={onSave}
-                onDelete={() => onDelete(stream._id)}
-                onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
-                isRefreshing={refreshingSingle[stream._id]}
-              />
-            </div>
+            <StreamCard 
+              key={stream._id}
+              stream={stream}
+              isEditing={editingStream?._id === stream._id}
+              onEdit={() => setEditingStream(stream)}
+              onCancelEdit={() => setEditingStream(null)}
+              onSave={onSave}
+              onDelete={() => onDelete(stream._id)}
+              onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
+              isRefreshing={refreshingSingle[stream._id]}
+            />
           ))}
         </div>
 
@@ -1075,77 +1074,87 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
 
   // Обычный режим просмотра (как в StreamList)
   return (
-    <div className="flex gap-4 py-3 pr-3">
-      {/* Превью */}
-      <div className="relative w-36 h-20 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
-        {stream.thumbnail ? (
-          <ThumbnailImage thumbnail={stream.thumbnail} />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Play size={24} className="text-gray-400" />
-          </div>
-        )}
-      </div>
+    <div className="stream-card group">
+      <div className="flex gap-4 py-3 pr-3">
+        {/* Превью */}
+        <div className="relative w-36 h-20 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
+          {stream.thumbnail ? (
+            <ThumbnailImage thumbnail={stream.thumbnail} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Play size={24} className="text-gray-400" />
+            </div>
+          )}
+          
+          {/* Кнопки управления поверх превью (показываются при hover) */}
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onRefreshThumbnail()
+              }}
+              disabled={isRefreshing}
+              className="p-1.5 bg-green-600/80 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Обновить превью"
+            >
+              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+            </button>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit()
+              }}
+              className="p-1.5 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              title="Редактировать"
+            >
+              <Edit size={14} />
+            </button>
 
-      {/* Информация о стриме */}
-      <div className="flex-1 min-w-0 -mt-[3.5px]">
-        <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
-          {stream.title}
-        </h3>
-        
-        <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
-          <Calendar size={16} />
-          <span className="font-roobert-regular">
-            {formatDateSafely(stream.date)}
-          </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              className="p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors"
+              title="Удалить"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
 
-        {stream.tags && stream.tags.length > 0 && (
-          <div className="flex items-center gap-1 text-sm mb-2">
-            <Tag size={14} />
-            <div className="flex gap-1 overflow-hidden">
-              {stream.tags.slice(0, 3).map((tag, tagIndex) => (
-                <span
-                  key={tagIndex}
-                  className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                >
-                  {tag.replace('#', '')}
-                </span>
-              ))}
-              {stream.tags.length > 3 && (
-                <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Кнопки действий */}
-        <div className="flex items-center gap-2 mt-2">
-          <button
-            onClick={onRefreshThumbnail}
-            disabled={isRefreshing}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Обновить превью"
-          >
-            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-            <span className="font-roobert-medium">Превью</span>
-          </button>
+        {/* Информация о стриме */}
+        <div className="flex-1 min-w-0 -mt-[3.5px]">
+          <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
+            {stream.title}
+          </h3>
           
-          <button
-            onClick={onEdit}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg transition-colors"
-          >
-            <Edit size={12} />
-            <span className="font-roobert-medium">Изменить</span>
-          </button>
+          <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
+            <Calendar size={16} />
+            <span className="font-roobert-regular">
+              {formatDateSafely(stream.date)}
+            </span>
+          </div>
 
-          <button
-            onClick={onDelete}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors"
-          >
-            <Trash2 size={12} />
-            <span className="font-roobert-medium">Удалить</span>
-          </button>
+          {stream.tags && stream.tags.length > 0 && (
+            <div className="flex items-center gap-1 text-sm">
+              <Tag size={14} />
+              <div className="flex gap-1 overflow-hidden">
+                {stream.tags.slice(0, 3).map((tag, tagIndex) => (
+                  <span
+                    key={tagIndex}
+                    className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                  >
+                    {tag.replace('#', '')}
+                  </span>
+                ))}
+                {stream.tags.length > 3 && (
+                  <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
