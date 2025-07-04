@@ -3,8 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 # Добавляем права для workflow
 permissions:
@@ -40,9 +38,6 @@ jobs:
     - name: Build project
       run: npm run build
       env:
-        # ✅ Только публичные переменные для frontend
-        VITE_API_URL: ${{ secrets.VITE_API_URL }}
-        VITE_API_SECRET_KEY: ${{ secrets.VITE_API_SECRET_KEY }}
         NODE_ENV: production
         
     - name: Setup Pages
@@ -54,8 +49,5 @@ jobs:
         path: './dist'
         
     - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
       id: deployment
-      uses: actions/deploy-pages@v4
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+      uses: actions/deploy-pages@v4 

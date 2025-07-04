@@ -3,12 +3,45 @@ import axios from 'axios'
 import { useTelegram } from './useTelegram'
 
 const API_BASE = import.meta.env.PROD 
-  ? (import.meta.env.VITE_API_URL || 'https://api.your-domain.com/api') 
+  ? (import.meta.env.VITE_API_URL || '') 
   : 'http://localhost:3000/api'
+
+// Демо-данные для GitHub Pages
+const DEMO_STREAMS = [
+  {
+    _id: 'demo-1',
+    title: 'Демо стрим #1',
+    stream_date: '2024-01-01',
+    categories: ['just_chatting'],
+    tags: ['#demo', '#test'],
+    telegramUrl: 'https://t.me/demo/1',
+    thumbnail: {
+      url: 'https://via.placeholder.com/320x180/1a1a1a/ffffff?text=Demo+Stream+1',
+      source: 'demo'
+    }
+  },
+  {
+    _id: 'demo-2',
+    title: 'Демо стрим #2',
+    stream_date: '2024-01-02',
+    categories: ['gaming'],
+    tags: ['#demo', '#gaming'],
+    telegramUrl: 'https://t.me/demo/2',
+    thumbnail: {
+      url: 'https://via.placeholder.com/320x180/1a1a1a/ffffff?text=Demo+Stream+2',
+      source: 'demo'
+    }
+  }
+]
+
+const DEMO_CATEGORIES = [
+  { _id: 'demo-cat-1', name: 'Just Chatting', tag: 'just_chatting' },
+  { _id: 'demo-cat-2', name: 'Gaming', tag: 'gaming' }
+]
 
 // Логируем для отладки
 if (import.meta.env.PROD) {
-  console.log('🌐 Production API URL:', import.meta.env.VITE_API_URL || 'NOT SET')
+  console.log('🌐 Production API URL:', import.meta.env.VITE_API_URL || 'NOT SET - using demo data')
 }
 
 export function useStreams() {
@@ -23,6 +56,15 @@ export function useStreams() {
     setError(null)
     
     try {
+      // Если API URL не настроен в production, используем демо-данные
+      if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
+        console.log('🎭 Using demo data for GitHub Pages')
+        setStreams(DEMO_STREAMS)
+        setCategories(DEMO_CATEGORIES)
+        setLoading(false)
+        return
+      }
+
       const params = category ? { category } : {}
       const response = await axios.get(`${API_BASE}/streams`, { params })
       setStreams(response.data.streams || [])
@@ -31,11 +73,11 @@ export function useStreams() {
       setError(err.message)
       console.error('Error fetching streams:', err)
       
-      // Если API недоступен, показываем пустые данные
+      // Если API недоступен, показываем демо-данные
       if (err.code === 'ERR_NETWORK' || err.response?.status === 404) {
-        console.log('⚠️ API недоступен, показываем пустые данные')
-        setStreams([])
-        setCategories([])
+        console.log('⚠️ API недоступен, показываем демо-данные')
+        setStreams(DEMO_STREAMS)
+        setCategories(DEMO_CATEGORIES)
       }
     } finally {
       setLoading(false)
