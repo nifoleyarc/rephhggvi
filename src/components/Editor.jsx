@@ -888,7 +888,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
                       <StreamCard
                         key={stream.id || stream._id}
                         stream={stream}
-                        isEditing={editingStream?.id === stream.id || editingStream?._id === stream._id}
+                        isEditing={editingStream && (editingStream.id === stream.id || editingStream._id === stream._id)}
                         onEdit={setEditingStream}
                         onCancelEdit={() => setEditingStream(null)}
                         onSave={handleUpdateStream}
