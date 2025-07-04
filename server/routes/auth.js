@@ -6,8 +6,9 @@ import { getDatabase } from '../database/init.js'
 const router = express.Router()
 
 // Константы для защиты от брут-форс
-const MAX_ATTEMPTS = 3
-const BAN_DURATION = 24 * 60 * 60 * 1000 // 24 часа в миллисекундах
+const MAX_ATTEMPTS = 5
+const BAN_DURATION = 2 * 60 * 60 * 1000 // 2 часа в миллисекундах
+const PROGRESSIVE_DELAYS = [1000, 2000, 5000, 10000, 15000] // Прогрессивные задержки
 
 // Функция для получения IP адреса
 function getClientIP(req) {
@@ -41,23 +42,35 @@ async function checkAndUpdateAttempts(ip, success = false) {
 
     // Проверяем, забанен ли IP
     if (record.banned_until && new Date(record.banned_until) > now) {
+      const remainingTime = new Date(record.banned_until) - now
+      console.log(`IP ${ip} is banned for ${Math.ceil(remainingTime / (60 * 1000))} more minutes`)
       return {
         banned: true,
-        remainingTime: new Date(record.banned_until) - now
+        remainingTime
       }
+    }
+
+    // Если бан истек, очищаем запись
+    if (record.banned_until && new Date(record.banned_until) <= now) {
+      await db.run('DELETE FROM auth_attempts WHERE ip = ?', [ip])
+      console.log(`Ban expired for IP ${ip}, clearing record`)
+      return { banned: false }
     }
 
     if (success) {
       // Успешная аутентификация - удаляем запись
       await db.run('DELETE FROM auth_attempts WHERE ip = ?', [ip])
+      console.log(`Successful auth for IP ${ip}, clearing attempts`)
       return { banned: false }
     } else {
       // Неудачная попытка
       record.attempts += 1
       record.last_attempt = now.toISOString()
+      
+      console.log(`Failed auth attempt ${record.attempts}/${MAX_ATTEMPTS} for IP ${ip}`)
 
       if (record.attempts >= MAX_ATTEMPTS) {
-        // Превышен лимит попыток - баним на 24 часа
+        // Превышен лимит попыток - баним
         record.banned_until = new Date(now.getTime() + BAN_DURATION).toISOString()
         
         await db.run(`
@@ -66,6 +79,7 @@ async function checkAndUpdateAttempts(ip, success = false) {
           VALUES (?, ?, ?, ?, ?)
         `, [record.ip, record.attempts, record.first_attempt, record.last_attempt, record.banned_until])
 
+        console.log(`IP ${ip} banned for ${BAN_DURATION / (60 * 1000)} minutes after ${MAX_ATTEMPTS} attempts`)
         return {
           banned: true,
           remainingTime: BAN_DURATION
@@ -80,7 +94,8 @@ async function checkAndUpdateAttempts(ip, success = false) {
 
         return { 
           banned: false,
-          attempts: record.attempts 
+          attempts: record.attempts,
+          delay: PROGRESSIVE_DELAYS[record.attempts - 1] || PROGRESSIVE_DELAYS[PROGRESSIVE_DELAYS.length - 1]
         }
       }
     }
@@ -199,12 +214,14 @@ router.post('/', async (req, res) => {
       const banCheck = await checkAndUpdateAttempts(clientIP)
       
       if (banCheck.banned) {
+        const minutesRemaining = Math.ceil(banCheck.remainingTime / (60 * 1000))
         const hoursRemaining = Math.ceil(banCheck.remainingTime / (60 * 60 * 1000))
-        console.log(`IP ${clientIP} is banned for ${hoursRemaining} hours`)
+        console.log(`IP ${clientIP} is banned for ${minutesRemaining} minutes (${hoursRemaining} hours)`)
         return res.status(429).json({ 
           success: false, 
           error: 'Access temporarily restricted',
-          retryAfter: hoursRemaining
+          retryAfter: hoursRemaining,
+          remainingMinutes: minutesRemaining
         })
       }
       
@@ -230,17 +247,21 @@ router.post('/', async (req, res) => {
         const attemptResult = await checkAndUpdateAttempts(clientIP, false)
         
         if (attemptResult.banned) {
+          const minutesRemaining = Math.ceil(attemptResult.remainingTime / (60 * 1000))
           const hoursRemaining = Math.ceil(attemptResult.remainingTime / (60 * 60 * 1000))
-          console.log(`IP ${clientIP} banned for ${hoursRemaining} hours after ${MAX_ATTEMPTS} failed attempts`)
+          console.log(`IP ${clientIP} banned for ${minutesRemaining} minutes after ${MAX_ATTEMPTS} failed attempts`)
           return res.status(429).json({ 
             success: false, 
             error: 'Access temporarily restricted',
-            retryAfter: hoursRemaining
+            retryAfter: hoursRemaining,
+            remainingMinutes: minutesRemaining
           })
         }
 
-        // Добавляем задержку для защиты от брут-форс атак
-        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
+        // Добавляем прогрессивную задержку для защиты от брут-форс атак
+        const delay = attemptResult.delay || 1000
+        console.log(`Adding ${delay}ms delay for failed attempt ${attemptResult.attempts}/${MAX_ATTEMPTS}`)
+        await new Promise(resolve => setTimeout(resolve, delay))
         return res.status(401).json({ success: false, error: 'Invalid password' })
       }
     }

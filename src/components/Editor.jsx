@@ -77,30 +77,39 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
   // Автоматическая аутентификация админа при загрузке
   useEffect(() => {
+    let authAttempted = false // Флаг для предотвращения повторных попыток
+    
     const tryTelegramAuth = async () => {
-      if (tg && tg.initData) {
-        console.log('Attempting automatic admin authentication...')
-        try {
-          const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
-            initData: tg.initData 
-          }, {
-            headers: API_CONFIG.getAuthHeaders(tg.initData)
-          })
-          
-          if (response.data.success && response.data.method === 'telegram') {
-            console.log('Admin auto-authenticated:', response.data.user)
-            setIsAuthenticated(true)
-            setIsBanned(false)
-            setBanTimeRemaining(0)
-            showToast(`Добро пожаловать, ${response.data.user.first_name}!`, 'success')
-            hapticFeedback('notification', 'success')
-          }
-              } catch (error) {
+      // Проверяем, что у нас есть данные и мы еще не пытались
+      if (authAttempted || !tg || !tg.initData || isAuthenticated) {
+        return
+      }
+      
+      authAttempted = true
+      console.log('Attempting automatic admin authentication...')
+      
+      try {
+        const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
+          initData: tg.initData 
+        }, {
+          headers: API_CONFIG.getAuthHeaders(tg.initData)
+        })
+        
+        if (response.data.success && response.data.method === 'telegram') {
+          console.log('Admin auto-authenticated:', response.data.user)
+          setIsAuthenticated(true)
+          setIsBanned(false)
+          setBanTimeRemaining(0)
+          showToast(`Добро пожаловать, ${response.data.user.first_name}!`, 'success')
+          hapticFeedback('notification', 'success')
+        }
+      } catch (error) {
         // Проверяем на бан при автоматической аутентификации
         if (error.response?.status === 429) {
           const retryAfter = error.response.data.retryAfter || 24
           setIsBanned(true)
           setBanTimeRemaining(retryAfter)
+          console.warn('Auto-auth: IP banned for', retryAfter, 'hours')
         } else if (error.response?.status === 403) {
           // Пользователь не админ - просто показываем форму входа без ошибок
           console.log('User is not admin, showing login form')
@@ -109,13 +118,15 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
           console.log('Auto-authentication failed:', error.message)
         }
       }
-      }
     }
 
     // Даем время для инициализации Telegram WebApp
     const timer = setTimeout(tryTelegramAuth, 500)
-    return () => clearTimeout(timer)
-  }, [tg])
+    return () => {
+      clearTimeout(timer)
+      authAttempted = false // Сброс при размонтировании
+    }
+  }, [tg?.initData, isAuthenticated]) // Более точные зависимости
 
   const handleAuth = async () => {
     if (!password.trim()) {
@@ -125,61 +136,46 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
     setLoading(true)
     try {
-      // Сначала пытаемся аутентификацию по Telegram (если есть initData)
-      if (tg && tg.initData) {
-        try {
-          const telegramResponse = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
-            initData: tg.initData 
-          }, {
-            headers: API_CONFIG.getAuthHeaders(tg.initData)
-          })
-          
-          if (telegramResponse.data.success && telegramResponse.data.method === 'telegram') {
-            setIsAuthenticated(true)
-            setIsBanned(false)
-            setBanTimeRemaining(0)
-            showToast(`Добро пожаловать, ${telegramResponse.data.user.first_name}!`, 'success')
-            hapticFeedback('notification', 'success')
-            return
-          }
-        } catch (telegramError) {
-          // Проверяем на бан при ошибке Telegram аутентификации
-          if (telegramError.response?.status === 429) {
-            const retryAfter = telegramError.response.data.retryAfter || 24
-            setIsBanned(true)
-            setBanTimeRemaining(retryAfter)
-            showToast('Доступ временно ограничен', 'error')
-            hapticFeedback('notification', 'error')
-            return
-          } else if (telegramError.response?.status === 403) {
-            // Пользователь не админ - продолжаем с проверкой пароля
-            console.log('User is not admin, trying password auth...')
-          } else {
-            console.log('Telegram auth failed, trying password...', telegramError.message)
-          }
-        }
-      }
-
-      // Если Telegram аутентификация не удалась, пытаемся по паролю
-      const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { password }, {
-        headers: API_CONFIG.getAuthHeaders()
+      // ИСПРАВЛЕНО: Делаем только ОДИН запрос с паролем
+      // Убираем дублирование с Telegram аутентификацией
+      console.log('Attempting password authentication...')
+      
+      const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
+        password,
+        // Включаем Telegram данные если есть (сервер выберет приоритет)
+        ...(tg?.initData && { initData: tg.initData })
+      }, {
+        headers: API_CONFIG.getAuthHeaders(tg?.initData)
       })
+      
       if (response.data.success) {
         setIsAuthenticated(true)
         setIsBanned(false)
         setBanTimeRemaining(0)
+        
+        const method = response.data.method
+        const userName = response.data.user?.first_name || 'Админ'
+        
+        showToast(`Добро пожаловать, ${userName}! (${method})`, 'success')
         hapticFeedback('notification', 'success')
       } else {
         showToast('Неверный пароль', 'error')
         hapticFeedback('notification', 'error')
       }
     } catch (error) {
+      console.error('Authentication error:', error)
+      
       // Проверяем на временный бан
       if (error.response?.status === 429) {
         const retryAfter = error.response.data.retryAfter || 24
         setIsBanned(true)
         setBanTimeRemaining(retryAfter)
-        showToast('Доступ временно ограничен', 'error')
+        const minutes = error.response.data.remainingMinutes || (retryAfter * 60)
+        const displayTime = minutes > 60 ? `${retryAfter} ч.` : `${minutes} мин.`
+        showToast(`Доступ ограничен на ${displayTime}`, 'error')
+        hapticFeedback('notification', 'error')
+      } else if (error.response?.status === 401) {
+        showToast('Неверный пароль', 'error')
         hapticFeedback('notification', 'error')
       } else {
         showToast('Ошибка аутентификации', 'error')
@@ -291,8 +287,6 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       hapticFeedback('notification', 'error')
     }
   }
-
-
 
   if (isBanned) {
     return (
@@ -484,8 +478,6 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
     }
   }
 
-
-
   // Фильтрация стримов по поисковому запросу
   const filteredStreams = streams.filter(stream => {
     if (!searchQuery) return true
@@ -654,8 +646,6 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
         )}
       </div>
 
-
-
       {/* Кнопки быстрых действий */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-800/50 border border-gray-700 rounded-xl">
         <div className="text-sm text-gray-400 font-roobert-light flex items-center">
@@ -681,8 +671,6 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
             year: 'numeric' 
           })
           
-
-          
           return (
             <div key={dateStr} className="space-y-3">
               <div className="flex items-center gap-3">
@@ -695,21 +683,21 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
                 </span>
               </div>
               
-                             <div className="space-y-3">
-                 {dateStreams.map((stream) => (
-                   <StreamCard 
-                     key={stream._id}
-                     stream={stream}
-                     isEditing={editingStream?._id === stream._id}
-                     onEdit={() => setEditingStream(stream)}
-                     onCancelEdit={() => setEditingStream(null)}
-                     onSave={onSave}
-                     onDelete={() => onDelete(stream._id)}
-                     onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
-                     isRefreshing={refreshingSingle[stream._id]}
-                   />
-                 ))}
-               </div>
+              <div className="space-y-3">
+                {dateStreams.map((stream) => (
+                  <StreamCard 
+                    key={stream._id}
+                    stream={stream}
+                    isEditing={editingStream?._id === stream._id}
+                    onEdit={() => setEditingStream(stream)}
+                    onCancelEdit={() => setEditingStream(null)}
+                    onSave={onSave}
+                    onDelete={() => onDelete(stream._id)}
+                    onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
+                    isRefreshing={refreshingSingle[stream._id]}
+                  />
+                ))}
+              </div>
             </div>
           )
         })}
