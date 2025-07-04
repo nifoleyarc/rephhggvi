@@ -43,8 +43,23 @@ export const API_CONFIG = {
       'Content-Type': 'application/json',
     }
 
+    // Приоритет 1: Telegram InitData (если передан)
     if (telegramInitData) {
       headers['x-telegram-init-data'] = telegramInitData
+      return headers
+    }
+
+    // Приоритет 2: API ключ из environment variables  
+    const apiKey = import.meta.env.VITE_API_SECRET_KEY
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`
+      return headers
+    }
+
+    // Приоритет 3: Frontend ключ как fallback
+    const frontendKey = import.meta.env.VITE_FRONTEND_KEY
+    if (frontendKey) {
+      headers['x-frontend-key'] = frontendKey
     }
 
     return headers

@@ -27,7 +27,8 @@
     "generate:frontend-key": "node scripts/generate-frontend-key.js",
     "check:github-vars": "node scripts/check-github-vars.js",
     "check:api-config": "node scripts/check-api-config.js",
-    "debug:rate-limit": "node scripts/debug-rate-limit.js"
+    "debug:rate-limit": "node scripts/debug-rate-limit.js",
+    "test:stream-update": "node scripts/test-stream-update.js"
   },
   "dependencies": {
     "axios": "^1.6.0",

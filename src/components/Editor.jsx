@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff } from 'lucide-react'
 import { useTelegram } from '../hooks/useTelegram'
@@ -127,6 +127,18 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       authAttempted = false // Сброс при размонтировании
     }
   }, [tg?.initData, isAuthenticated]) // Более точные зависимости
+
+  // Защита от автоматического открытия редактирования при первой загрузке
+  const hasLoadedStreamsRef = useRef(false)
+  useEffect(() => {
+    if (streams.length > 0 && !hasLoadedStreamsRef.current) {
+      hasLoadedStreamsRef.current = true
+      // При первой загрузке стримов сбрасываем любое состояние редактирования
+      if (editingStream) {
+        setEditingStream(null)
+      }
+    }
+  }, [streams.length, editingStream])
 
   const handleAuth = async () => {
     if (!password.trim()) {
@@ -288,6 +300,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       hapticFeedback('notification', 'error')
     }
   }
+
 
   if (isBanned) {
     return (
