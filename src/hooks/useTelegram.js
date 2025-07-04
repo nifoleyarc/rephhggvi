@@ -51,6 +51,7 @@ export function useTelegram() {
     user,
     themeParams,
     hapticFeedback,
-    openTelegramLink
+    openTelegramLink,
+    initData: tg?.initData // Добавляем initData для авторизации
   }
 }

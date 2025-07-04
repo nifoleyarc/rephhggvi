@@ -9,7 +9,7 @@ export function useStreams() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [apiConnected, setApiConnected] = useState(false)
-  const { tg } = useTelegram()
+  const { tg, initData } = useTelegram()
 
   const fetchStreams = useCallback(async (category = null) => {
     setLoading(true)
@@ -78,7 +78,7 @@ export function useStreams() {
 
   const addStream = useCallback(async (streamData) => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       const response = await axios.post(
         `${API_CONFIG.baseURL}/streams`, 
@@ -98,11 +98,11 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg])
+  }, [initData])
 
   const updateStream = useCallback(async (id, streamData) => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       const response = await axios.put(
         `${API_CONFIG.baseURL}/streams/${id}`, 
@@ -124,11 +124,11 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg])
+  }, [initData])
 
   const deleteStream = useCallback(async (id) => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       await axios.delete(`${API_CONFIG.baseURL}/streams/${id}`, { headers })
       setStreams(prev => prev.filter(stream => stream._id !== id))
@@ -136,11 +136,11 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg])
+  }, [initData])
 
   const addCategory = useCallback(async (categoryData) => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       const response = await axios.post(
         `${API_CONFIG.baseURL}/categories`, 
@@ -154,11 +154,11 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg])
+  }, [initData])
 
   const updateCategory = useCallback(async (id, categoryData) => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       const response = await axios.put(
         `${API_CONFIG.baseURL}/categories/${id}`, 
@@ -174,11 +174,11 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg])
+  }, [initData])
 
   const deleteCategory = useCallback(async (id) => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       await axios.delete(`${API_CONFIG.baseURL}/categories/${id}`, { headers })
       setCategories(prev => prev.filter(cat => cat._id !== id))
@@ -186,11 +186,11 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg])
+  }, [initData])
 
   const refreshThumbnails = useCallback(async () => {
     try {
-      const headers = API_CONFIG.getAuthHeaders(tg?.initData)
+      const headers = API_CONFIG.getAuthHeaders(initData)
       
       const response = await axios.post(
         `${API_CONFIG.baseURL}/refresh-thumbnails`, 
@@ -206,7 +206,7 @@ export function useStreams() {
       setError(err.message)
       throw err
     }
-  }, [tg, fetchStreams])
+  }, [initData, fetchStreams])
 
   return {
     streams,

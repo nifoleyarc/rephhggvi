@@ -171,6 +171,27 @@ export function requireAuth(req, res, next) {
     }
   }
 
+  // Способ 4: Проверка авторизации по паролю через заголовок (для уже авторизованных пользователей)
+  const adminAuthHeader = req.headers['x-admin-auth']
+  if (adminAuthHeader === 'true') {
+    // Дополнительная проверка Origin для безопасности
+    if (isOriginAllowed(req)) {
+      // Проверяем, что пароль настроен на сервере
+      const passwordHash = process.env.EDITOR_PASSWORD_HASH
+      if (passwordHash) {
+        req.authMethod = 'password-header'
+        req.user = { type: 'password', id: 'admin' }
+        return next()
+      }
+    } else {
+      console.warn('Admin auth header used from unauthorized origin:', req.headers.origin || req.headers.referer)
+      return res.status(403).json({ 
+        error: 'Forbidden',
+        message: 'Доступ запрещен с данного домена'
+      })
+    }
+  }
+
   // Если ни один способ не сработал
   return res.status(401).json({ 
     error: 'Unauthorized',

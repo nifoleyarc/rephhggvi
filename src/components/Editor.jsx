@@ -577,7 +577,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
   const [isBanned, setIsBanned] = useState(false)
   const [banTimeRemaining, setBanTimeRemaining] = useState(0)
   
-  const { tg, hapticFeedback } = useTelegram()
+  const { tg, hapticFeedback, initData } = useTelegram()
   const { 
     streams, 
     categories, 
@@ -640,7 +640,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       clearTimeout(timer)
       authAttempted = false
     }
-  }, [tg?.initData, isAuthenticated])
+  }, [initData, isAuthenticated])
 
   const handleAuth = async () => {
     if (!password.trim()) {
@@ -652,9 +652,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     try {
       const response = await axios.post(`${API_CONFIG.baseURL}/auth`, { 
         password,
-        ...(tg?.initData && { initData: tg.initData })
+        ...(initData && { initData: initData })
       }, {
-        headers: API_CONFIG.getAuthHeaders(tg?.initData)
+        headers: API_CONFIG.getAuthHeaders(initData)
       })
       
       if (response.data.success) {
@@ -665,8 +665,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         const method = response.data.method
         const userName = response.data.user?.first_name || 'Админ'
         
-        if (method === 'telegram' && tg?.initData) {
-          API_CONFIG.setAuthState(true, 'telegram', tg.initData)
+        if (method === 'telegram' && initData) {
+          API_CONFIG.setAuthState(true, 'telegram', initData)
         } else if (method === 'password') {
           API_CONFIG.setAuthState(true, 'password', null)
         } else {
@@ -737,7 +737,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       const response = await axios.post(
         `${API_CONFIG.baseURL}/streams/${streamId}/refresh-thumbnail`,
         {},
-        { headers: API_CONFIG.getAuthHeaders(tg?.initData) }
+        { headers: API_CONFIG.getAuthHeaders(initData) }
       )
       
       if (response.data.success) {
