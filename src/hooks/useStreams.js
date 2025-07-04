@@ -11,7 +11,7 @@ const DEMO_STREAMS = [
   {
     _id: 'demo-1',
     title: 'Демо стрим #1',
-    stream_date: '2024-01-01',
+    date: '2024-01-15T20:00:00.000Z',
     categories: ['just_chatting'],
     tags: ['#demo', '#test'],
     telegramUrl: 'https://t.me/demo/1',
@@ -23,7 +23,7 @@ const DEMO_STREAMS = [
   {
     _id: 'demo-2',
     title: 'Демо стрим #2',
-    stream_date: '2024-01-02',
+    date: '2024-01-20T18:30:00.000Z',
     categories: ['gaming'],
     tags: ['#demo', '#gaming'],
     telegramUrl: 'https://t.me/demo/2',
