@@ -37,6 +37,27 @@ export const API_CONFIG = {
     }
   },
 
+  // Состояние аутентификации
+  _authState: {
+    isAuthenticated: false,
+    authMethod: null,
+    authData: null
+  },
+
+  // Установка состояния аутентификации
+  setAuthState(isAuthenticated, method = null, data = null) {
+    this._authState = {
+      isAuthenticated,
+      authMethod: method,
+      authData: data
+    }
+  },
+
+  // Получение состояния аутентификации
+  getAuthState() {
+    return this._authState
+  },
+
   // Получение headers для аутентификации
   getAuthHeaders(telegramInitData = null) {
     const headers = {
@@ -49,14 +70,15 @@ export const API_CONFIG = {
       return headers
     }
 
-    // Приоритет 2: API ключ из environment variables  
-    const apiKey = import.meta.env.VITE_API_SECRET_KEY
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`
+    // Приоритет 2: Сохранённые данные аутентификации
+    if (this._authState.isAuthenticated) {
+      if (this._authState.authMethod === 'telegram' && this._authState.authData) {
+        headers['x-telegram-init-data'] = this._authState.authData
+      }
       return headers
     }
 
-    // Приоритет 3: Frontend ключ как fallback
+    // Приоритет 3: Frontend ключ как fallback для базового доступа
     const frontendKey = import.meta.env.VITE_FRONTEND_KEY
     if (frontendKey) {
       headers['x-frontend-key'] = frontendKey

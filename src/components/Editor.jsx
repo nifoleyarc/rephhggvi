@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff } from 'lucide-react'
+import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff, Search, Tag } from 'lucide-react'
+import { format } from 'date-fns'
+import { ru } from 'date-fns/locale'
 import { useTelegram } from '../hooks/useTelegram'
 import { useStreams } from '../hooks/useStreams'
 import { API_CONFIG } from '../utils/api'
@@ -95,14 +97,18 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
           headers: API_CONFIG.getAuthHeaders(tg.initData)
         })
         
-        if (response.data.success && response.data.method === 'telegram') {
-          console.log('Admin auto-authenticated:', response.data.user)
-          setIsAuthenticated(true)
-          setIsBanned(false)
-          setBanTimeRemaining(0)
-          showToast(`Добро пожаловать, ${response.data.user.first_name}!`, 'success')
-          hapticFeedback('notification', 'success')
-        }
+              if (response.data.success && response.data.method === 'telegram') {
+        console.log('Admin auto-authenticated:', response.data.user)
+        setIsAuthenticated(true)
+        setIsBanned(false)
+        setBanTimeRemaining(0)
+        
+        // Сохраняем состояние аутентификации в API_CONFIG
+        API_CONFIG.setAuthState(true, 'telegram', tg.initData)
+        
+        showToast(`Добро пожаловать, ${response.data.user.first_name}!`, 'success')
+        hapticFeedback('notification', 'success')
+      }
       } catch (error) {
         // Проверяем на бан при автоматической аутентификации
         if (error.response?.status === 429) {
@@ -167,6 +173,13 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         
         const method = response.data.method
         const userName = response.data.user?.first_name || 'Админ'
+        
+        // Сохраняем состояние аутентификации в API_CONFIG
+        if (method === 'telegram' && tg?.initData) {
+          API_CONFIG.setAuthState(true, 'telegram', tg.initData)
+        } else {
+          API_CONFIG.setAuthState(true, method, null)
+        }
         
         showToast(`Добро пожаловать, ${userName}! (${method})`, 'success')
         hapticFeedback('notification', 'success')
@@ -321,6 +334,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
             onClick={() => {
               // Сбрасываем состояние редактирования при закрытии
               setEditingStream(null)
+              // Сбрасываем состояние аутентификации
+              API_CONFIG.setAuthState(false, null, null)
               onClose()
             }}
             className="mt-4 px-4 py-2 bg-tg-button text-tg-button-text rounded-lg font-roobert-medium"
@@ -383,6 +398,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
             onClick={() => {
               // Сбрасываем состояние редактирования при закрытии
               setEditingStream(null)
+              // Сбрасываем состояние аутентификации
+              API_CONFIG.setAuthState(false, null, null)
               onClose()
             }}
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
@@ -453,11 +470,14 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
   )
 }
 
-// Компонент для редактирования стримов
+// Компонент для редактирования стримов (на основе StreamList)
 const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete, onRefreshThumbnails, onRefreshSingleThumbnail, refreshingThumbnails, showToast, hapticFeedback, onDataUpdate }) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [refreshingSingle, setRefreshingSingle] = useState({})
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [sortBy, setSortBy] = useState('date')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [addFormData, setAddFormData] = useState({
     title: '',
     date: '',
@@ -505,46 +525,153 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
     }
   }
 
-  // Фильтрация стримов по поисковому запросу
-  const filteredStreams = streams.filter(stream => {
-    if (!searchQuery) return true
-    
-    const query = searchQuery.toLowerCase()
-    const titleMatch = stream.title?.toLowerCase().includes(query)
-    const tagsMatch = stream.tags?.some(tag => tag.toLowerCase().includes(query))
-    const dateMatch = new Date(stream.date).toLocaleDateString('ru').includes(query)
-    
-    return titleMatch || tagsMatch || dateMatch
-  })
+  // Функции для работы с категориями и сортировкой (из StreamList)
+  const getCategoryCount = (categoryId) => {
+    if (categoryId === 'all') return streams.length
+    return streams.filter(stream => 
+      stream.categories?.includes(categoryId) ||
+      stream.tags?.some(tag => tag.toLowerCase().includes(categoryId.toLowerCase()))
+    ).length
+  }
 
-  // Группировка стримов по датам  
-  const groupedStreams = filteredStreams.reduce((groups, stream) => {
-    const dateStr = new Date(stream.date).toDateString()
-    if (!groups[dateStr]) {
-      groups[dateStr] = []
+  const allCategories = [
+    { id: 'all', name: '📺 Все', count: getCategoryCount('all') },
+    { id: 'фильм', name: '🍿 Фильмы / Мультики', count: getCategoryCount('фильм') },
+    { id: 'ирл', name: '🗺️ ИРЛ стримы', count: getCategoryCount('ирл') },
+    { id: 'контент', name: '👀 Контент', count: getCategoryCount('контент') },
+    { id: 'игры', name: '🎮 Игровые стримы', count: getCategoryCount('игры') },
+    { id: 'just_chatting', name: '💬 Общение / Видосы', count: getCategoryCount('just_chatting') },
+    { id: 'шоу', name: '🎭 ШОУ', count: getCategoryCount('шоу') },
+    { id: 'кукинг', name: '🍳 Кукинги', count: getCategoryCount('кукинг') },
+    { id: 'марафон', name: '🏅 Марафоны', count: getCategoryCount('марафон') },
+  ]
+
+  const getTagColor = (tag) => {
+    const tagLower = tag.toLowerCase().replace('#', '')
+    switch (tagLower) {
+      case 'ирл':
+        return 'bg-blue-500/40 text-blue-200'
+      case 'фильм':
+        return 'bg-purple-500/40 text-purple-200'
+      case 'just_chatting':
+        return 'bg-blue-500/40 text-blue-200'
+      case 'игры':
+        return 'bg-red-500/40 text-red-200'
+      case 'контент':
+        return 'bg-green-600/40 text-green-200'
+      case 'шоу':
+        return 'bg-purple-500/40 text-purple-200'
+      case 'кукинг':
+        return 'bg-emerald-500/40 text-emerald-200'
+      case 'марафон':
+        return 'bg-amber-500/40 text-amber-200'
+      default:
+        return 'bg-gray-500/40 text-gray-200'
+    }
+  }
+
+  const getCategoryColor = (categoryId) => {
+    switch (categoryId) {
+      case 'фильм':
+        return 'bg-purple-600 text-white hover:bg-purple-500'
+      case 'just_chatting':
+        return 'text-white hover:opacity-90 bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-500'
+      case 'ирл':
+        return 'bg-blue-600 text-white hover:bg-blue-500'
+      case 'игры':
+        return 'bg-red-600 text-white hover:bg-red-500'
+      case 'контент':
+        return 'bg-green-600 text-white hover:bg-green-500'
+      case 'шоу':
+        return 'text-white hover:opacity-90 bg-gradient-to-r from-purple-500 via-violet-600 to-fuchsia-500'
+      case 'кукинг':
+        return 'text-white hover:opacity-90 bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-400'
+      case 'марафон':
+        return 'text-white hover:opacity-90 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400'
+      case 'all':
+      default:
+        return 'bg-blue-600 text-white hover:bg-blue-500'
+    }
+  }
+
+  const formatDateSafely = (dateString, formatStr, options = {}) => {
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return ''
+      }
+      return format(date, formatStr, options)
+    } catch (error) {
+      console.warn('Invalid date format:', dateString)
+      return ''
+    }
+  }
+
+  const checkDateMatch = (dateString, query) => {
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return false
+      }
+      
+      const shortDate = date.toLocaleDateString('ru')
+      return shortDate.includes(query)
+    } catch (error) {
+      console.warn('Invalid date format:', dateString)
+      return false
+    }
+  }
+
+  const handleSortChange = (newSortBy) => {
+    if (sortBy === newSortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(newSortBy)
+      setSortOrder('desc')
+    }
+  }
+
+  // Фильтрация и сортировка стримов (из StreamList)
+  const filteredAndSortedStreams = streams.filter(stream => {
+    // Фильтрация по категории
+    if (selectedCategory !== 'all') {
+      const categoryMatch = stream.categories?.includes(selectedCategory) ||
+        stream.tags?.some(tag => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
+      if (!categoryMatch) return false
+    }
+
+    // Фильтрация по поиску
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const titleMatch = stream.title?.toLowerCase().includes(query)
+      const tagsMatch = stream.tags?.some(tag => tag.toLowerCase().includes(query))
+      const dateMatch = checkDateMatch(stream.date, query)
+      
+      return titleMatch || tagsMatch || dateMatch
+    }
+
+    return true
+  }).sort((a, b) => {
+    let comparison = 0
+    
+    if (sortBy === 'date') {
+      comparison = new Date(a.date) - new Date(b.date)
+    } else if (sortBy === 'name') {
+      comparison = a.title.localeCompare(b.title)
     }
     
-    groups[dateStr].push(stream)
-    return groups
-  }, {})
-
-  // Сортировка стримов внутри каждой группы по времени
-  Object.keys(groupedStreams).forEach(dateStr => {
-    groupedStreams[dateStr].sort((a, b) => new Date(a.date) - new Date(b.date))
+    return sortOrder === 'desc' ? -comparison : comparison
   })
-
-  // Сортировка дат (самые новые сверху)
-  const sortedDates = Object.keys(groupedStreams).sort((a, b) => new Date(b) - new Date(a))
 
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="h-full overflow-auto p-4 space-y-6"
+      className="h-full overflow-auto"
     >
       {/* Кнопка добавления + форма */}
-      <div className="space-y-4">
+      <div className="px-4 py-3 bg-tg-secondary-bg border-b border-gray-700">
         {!showAddForm ? (
           <div className="text-center">
             <button
@@ -640,122 +767,134 @@ const StreamsTab = ({ streams, editingStream, setEditingStream, onSave, onDelete
         )}
       </div>
 
-      {/* Поиск */}
-      <div className="space-y-4">
-        <div className="relative">
+      {/* Категории */}
+      <div className="py-3">
+        <motion.div 
+          className="flex gap-3 overflow-x-auto px-4 pb-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {allCategories.map((category, index) => (
+            <motion.button
+              key={category.id}
+              onClick={() => setSelectedCategory(category.id)}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-roobert-medium transition-colors ${
+                selectedCategory === category.id 
+                  ? getCategoryColor(category.id)
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
+              {category.name}
+              {category.count > 0 && (
+                <span className="ml-2 text-sm opacity-50">({category.count})</span>
+              )}
+            </motion.button>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Поиск и сортировка */}
+      <div className="px-4 space-y-4 pt-4">
+        {/* Поиск */}
+        <div className="relative bg-tg-secondary-bg/50 border-2 border-gray-600/50 rounded-lg p-1">
+          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-tg-hint" />
           <input
             type="text"
-            placeholder="Поиск по названию, тегам или дате..."
+            placeholder="Поиск по названию, тегам, дате..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 pl-10 bg-gray-800 border border-gray-700 rounded-xl text-tg-text placeholder-tg-hint focus:outline-none focus:border-tg-button font-roobert-regular"
+            className="w-full pl-10 pr-10 py-3 bg-transparent text-sm text-tg-text placeholder-tg-hint focus:outline-none font-roobert-light"
           />
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
-          </div>
-          {searchQuery && (
+          {searchQuery.trim() && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-600 transition-colors"
             >
-              <X size={16} />
+              <X size={14} className="text-tg-hint" />
             </button>
           )}
         </div>
         
-        {searchQuery && (
-          <div className="text-sm text-gray-400 font-roobert-light">
-            Найдено: {filteredStreams.length} из {streams.length}
+        {/* Счетчик результатов */}
+        {searchQuery.trim() && (
+          <div className="text-sm text-tg-hint font-roobert-light">
+            Найдено: {filteredAndSortedStreams.length} из {streams.length}
+          </div>
+        )}
+
+        {/* Сортировка */}
+        <div className="flex gap-2 text-base">
+          <span className="text-tg-hint font-roobert-light">Сортировка:</span>
+          {[
+            { key: 'date', label: 'По дате' },
+            { key: 'name', label: 'По названию' }
+          ].map((sort) => (
+            <button
+              key={sort.key}
+              onClick={() => handleSortChange(sort.key)}
+              className={`px-4 py-1 rounded text-sm font-roobert-light transition-colors ${
+                sortBy === sort.key
+                  ? 'bg-tg-button text-tg-button-text'
+                  : 'text-tg-hint hover:text-tg-text'
+              }`}
+            >
+              {sort.label}
+              {sortBy === sort.key && (
+                <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Кнопка обновления превью */}
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-tg-hint font-roobert-light">
+            Всего стримов: {streams.length}
+          </div>
+          <button
+            onClick={onRefreshThumbnails}
+            disabled={refreshingThumbnails}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-200 rounded-lg font-roobert-regular text-sm transition-colors"
+          >
+            <RefreshCw size={14} className={refreshingThumbnails ? 'animate-spin' : ''} />
+            {refreshingThumbnails ? 'Обновляем...' : 'Обновить превью'}
+          </button>
+        </div>
+
+        {/* Список стримов */}
+        <div className="grid gap-3">
+          {filteredAndSortedStreams.map((stream) => (
+            <div key={stream._id} className="stream-card">
+              <StreamCard 
+                stream={stream}
+                isEditing={editingStream?._id === stream._id}
+                onEdit={() => setEditingStream(stream)}
+                onCancelEdit={() => setEditingStream(null)}
+                onSave={onSave}
+                onDelete={() => onDelete(stream._id)}
+                onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
+                isRefreshing={refreshingSingle[stream._id]}
+              />
+            </div>
+          ))}
+        </div>
+
+        {filteredAndSortedStreams.length === 0 && (
+          <div className="text-center py-8 text-tg-hint">
+            <Play size={48} className="mx-auto mb-2 opacity-50" />
+            <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
           </div>
         )}
       </div>
-
-      {/* Кнопки быстрых действий */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-800/50 border border-gray-700 rounded-xl">
-        <div className="text-sm text-gray-400 font-roobert-light flex items-center">
-          <span>Всего стримов: {streams.length}</span>
-        </div>
-        <button
-          onClick={onRefreshThumbnails}
-          disabled={refreshingThumbnails}
-          className="flex items-center gap-1.5 px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-200 rounded-lg font-roobert-regular text-sm transition-colors"
-        >
-          <RefreshCw size={14} className={refreshingThumbnails ? 'animate-spin' : ''} />
-          {refreshingThumbnails ? 'Обновляем...' : 'Обновить превью'}
-        </button>
-      </div>
-
-      {/* Список стримов по датам */}
-      <div className="space-y-6">
-        {sortedDates.map((dateStr) => {
-          const dateStreams = groupedStreams[dateStr]
-          const displayDate = new Date(dateStr).toLocaleDateString('ru', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })
-          
-          return (
-            <div key={dateStr} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-roobert-medium text-gray-300">
-                  {displayDate}
-                </h3>
-                <div className="flex-1 h-px bg-gray-700"></div>
-                <span className="text-sm text-gray-500 font-roobert-light">
-                  {dateStreams.length} {dateStreams.length === 1 ? 'стрим' : 'стримов'}
-                </span>
-              </div>
-              
-              <div className="space-y-3">
-                {dateStreams.map((stream) => (
-                  <StreamCard 
-                    key={stream._id}
-                    stream={stream}
-                    isEditing={editingStream?._id === stream._id}
-                    onEdit={() => setEditingStream(stream)}
-                    onCancelEdit={() => setEditingStream(null)}
-                    onSave={onSave}
-                    onDelete={() => onDelete(stream._id)}
-                    onRefreshThumbnail={() => handleRefreshSingle(stream._id)}
-                    isRefreshing={refreshingSingle[stream._id]}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {streams.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
-          <div className="text-6xl mb-4">📺</div>
-          <p className="text-lg font-roobert-medium mb-2">Стримов пока нет</p>
-          <p className="text-sm font-roobert-light">Добавьте первый стрим с помощью кнопки выше</p>
-        </div>
-      )}
-
-      {streams.length > 0 && filteredStreams.length === 0 && searchQuery && (
-        <div className="text-center py-12 text-gray-400">
-          <div className="text-6xl mb-4">🔍</div>
-          <p className="text-lg font-roobert-medium mb-2">Ничего не найдено</p>
-          <p className="text-sm font-roobert-light">Попробуйте изменить поисковый запрос</p>
-          <button
-            onClick={() => setSearchQuery('')}
-            className="mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-roobert-medium text-sm transition-colors"
-          >
-            Очистить поиск
-          </button>
-        </div>
-      )}
     </motion.div>
   )
 }
 
-// Компонент карточки стрима с inline редактированием
+// Компонент карточки стрима с inline редактированием (на основе StreamList)
 const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete, onRefreshThumbnail, isRefreshing }) => {
   const [editData, setEditData] = useState({
     title: '',
@@ -811,15 +950,37 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
   const getTagColor = (tag) => {
     const tagLower = tag.toLowerCase().replace('#', '')
     switch (tagLower) {
-      case 'ирл': return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-      case 'фильм': return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-      case 'just_chatting': return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-      case 'игры': return 'bg-red-500/20 text-red-300 border-red-500/30'
-      case 'контент': return 'bg-green-600/20 text-green-300 border-green-600/30'
-      case 'шоу': return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-      case 'кукинг': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-      case 'марафон': return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+      case 'ирл':
+        return 'bg-blue-500/40 text-blue-200'
+      case 'фильм':
+        return 'bg-purple-500/40 text-purple-200'
+      case 'just_chatting':
+        return 'bg-blue-500/40 text-blue-200'
+      case 'игры':
+        return 'bg-red-500/40 text-red-200'
+      case 'контент':
+        return 'bg-green-600/40 text-green-200'
+      case 'шоу':
+        return 'bg-purple-500/40 text-purple-200'
+      case 'кукинг':
+        return 'bg-emerald-500/40 text-emerald-200'
+      case 'марафон':
+        return 'bg-amber-500/40 text-amber-200'
+      default:
+        return 'bg-gray-500/40 text-gray-200'
+    }
+  }
+
+  const formatDateSafely = (dateString) => {
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return 'Неизвестная дата'
+      }
+      return format(date, 'dd MMM yyyy', { locale: ru })
+    } catch (error) {
+      console.warn('Invalid date format:', dateString)
+      return 'Неизвестная дата'
     }
   }
 
@@ -912,114 +1073,82 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
     )
   }
 
+  // Обычный режим просмотра (как в StreamList)
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-800 border border-gray-700 hover:border-gray-600 rounded-xl overflow-hidden transition-colors"
-    >
-      <div className="p-6">
-        <div className="flex gap-4">
-          {/* Превью */}
-          <div className="w-24 h-16 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
-            <ThumbnailImage thumbnail={stream.thumbnail} />
+    <div className="flex gap-4 py-3 pr-3">
+      {/* Превью */}
+      <div className="relative w-36 h-20 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
+        {stream.thumbnail ? (
+          <ThumbnailImage thumbnail={stream.thumbnail} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Play size={24} className="text-gray-400" />
           </div>
+        )}
+      </div>
 
-          {/* Основная информация */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-roobert-bold text-base mb-2 line-clamp-2 leading-tight">
-              {stream.title}
-            </h4>
-            
-            <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
-              <div className="flex items-center gap-1">
-                <Calendar size={14} />
-                <span className="font-roobert-regular">
-                  {new Date(stream.date).toLocaleDateString('ru', { 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}
-                  {' в '}
-                  {new Date(stream.date).toLocaleTimeString('ru', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-1">
-                {(() => {
-                  // Проверяем наличие превью в зависимости от типа
-                  const hasThumbnail = typeof stream.thumbnail === 'object' && stream.thumbnail?.url
-                    ? stream.thumbnail.url
-                    : typeof stream.thumbnail === 'string' && stream.thumbnail.startsWith('http')
-                    ? stream.thumbnail
-                    : false
-
-                  return hasThumbnail ? (
-                    <span className="flex items-center gap-1 text-green-400">
-                      <ImageIcon size={14} />
-                      <span className="text-xs">Превью</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-gray-500">
-                      <ImageOff size={14} />
-                      <span className="text-xs">Без превью</span>
-                    </span>
-                  )
-                })()}
-              </div>
-            </div>
-
-            {/* Теги */}
-            {stream.tags && stream.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {stream.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className={`px-2 py-1 rounded-md text-xs font-roobert-medium border ${getTagColor(tag)}`}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* Информация о стриме */}
+      <div className="flex-1 min-w-0 -mt-[3.5px]">
+        <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
+          {stream.title}
+        </h3>
+        
+        <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
+          <Calendar size={16} />
+          <span className="font-roobert-regular">
+            {formatDateSafely(stream.date)}
+          </span>
         </div>
 
-        {/* Кнопки действий */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
-          <div className="flex gap-2">
-            <button
-              onClick={onRefreshThumbnail}
-              disabled={isRefreshing}
-              className="flex items-center gap-1 px-3 py-2 text-green-400 hover:bg-green-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Обновить превью"
-            >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-              <span className="text-xs font-roobert-medium">Превью</span>
-            </button>
-            
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-1 px-3 py-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
-            >
-              <Edit size={14} />
-              <span className="text-xs font-roobert-medium">Изменить</span>
-            </button>
+        {stream.tags && stream.tags.length > 0 && (
+          <div className="flex items-center gap-1 text-sm mb-2">
+            <Tag size={14} />
+            <div className="flex gap-1 overflow-hidden">
+              {stream.tags.slice(0, 3).map((tag, tagIndex) => (
+                <span
+                  key={tagIndex}
+                  className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                >
+                  {tag.replace('#', '')}
+                </span>
+              ))}
+              {stream.tags.length > 3 && (
+                <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
+              )}
+            </div>
           </div>
+        )}
+
+        {/* Кнопки действий */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={onRefreshThumbnail}
+            disabled={isRefreshing}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Обновить превью"
+          >
+            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="font-roobert-medium">Превью</span>
+          </button>
+          
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg transition-colors"
+          >
+            <Edit size={12} />
+            <span className="font-roobert-medium">Изменить</span>
+          </button>
 
           <button
             onClick={onDelete}
-            className="flex items-center gap-1 px-3 py-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors"
           >
-            <Trash2 size={14} />
-            <span className="text-xs font-roobert-medium">Удалить</span>
+            <Trash2 size={12} />
+            <span className="font-roobert-medium">Удалить</span>
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
