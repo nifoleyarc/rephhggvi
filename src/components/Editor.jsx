@@ -134,7 +134,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
     streamUrl: '',
     category: '',
     tags: '',
-    date: '',
+    date: new Date().toISOString().slice(0, 16), // Устанавливаем текущую дату и время
     thumbnail: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -145,7 +145,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
       streamUrl: '',
       category: '',
       tags: '',
-      date: '',
+      date: new Date().toISOString().slice(0, 16), // Устанавливаем текущую дату и время
       thumbnail: ''
     })
     setIsExpanded(false)
@@ -161,8 +161,12 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
     setIsSubmitting(true)
     try {
       const streamData = {
-        ...formData,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        title: formData.title,
+        telegramUrl: formData.streamUrl, // Исправляем поле для сервера
+        date: formData.date || new Date().toISOString(), // Устанавливаем дату по умолчанию
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        categories: formData.category ? [formData.category] : [], // Преобразуем в массив
+        thumbnail: formData.thumbnail || undefined
       }
       
       await onAdd(streamData)
@@ -246,7 +250,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
                 >
                   <option value="">Выберите категорию</option>
                   {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <option key={cat.id} value={cat.tag}>{cat.name}</option>
                   ))}
                 </select>
               </div>
@@ -324,7 +328,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
   const [editData, setEditData] = useState({
     title: stream.title || '',
     streamUrl: stream.streamUrl || stream.telegram_url || '',
-    category: stream.category || '',
+    category: (Array.isArray(stream.categories) && stream.categories.length > 0) ? stream.categories[0] : '',
     tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
     date: formatDateTimeLocal(stream.date || stream.stream_date),
     thumbnail: stream.thumbnail || ''
@@ -336,7 +340,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
       setEditData({
         title: stream.title || '',
         streamUrl: stream.streamUrl || stream.telegram_url || '',
-        category: stream.category || '',
+        category: (Array.isArray(stream.categories) && stream.categories.length > 0) ? stream.categories[0] : '',
         tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
         date: formatDateTimeLocal(stream.date || stream.stream_date),
         thumbnail: typeof stream.thumbnail === 'object' && stream.thumbnail?.url 
@@ -355,8 +359,12 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
     setIsLoading(true)
     try {
       const streamData = {
-        ...editData,
-        tags: editData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        title: editData.title,
+        telegramUrl: editData.streamUrl, // Исправляем поле для сервера
+        date: editData.date || new Date().toISOString(), // Устанавливаем дату по умолчанию
+        tags: editData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        categories: editData.category ? [editData.category] : [], // Преобразуем в массив
+        thumbnail: editData.thumbnail || undefined
       }
       
       await onSave(streamData, stream.id || stream._id)
@@ -434,7 +442,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
               >
                 <option value="">Выберите категорию</option>
                 {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.tag}>{cat.name}</option>
                 ))}
               </select>
             </div>

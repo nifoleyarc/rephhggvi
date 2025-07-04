@@ -63,10 +63,24 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const streamData = { ...req.body }
+    
+    console.log('📥 Received stream data:', JSON.stringify(streamData, null, 2))
 
     // Валидация
     if (!streamData.title || !streamData.date || !streamData.telegramUrl) {
-      return res.status(400).json({ error: 'Отсутствуют обязательные поля' })
+      console.log('❌ Validation failed:', {
+        title: !!streamData.title,
+        date: !!streamData.date,
+        telegramUrl: !!streamData.telegramUrl
+      })
+      return res.status(400).json({ 
+        error: 'Отсутствуют обязательные поля',
+        details: {
+          title: !!streamData.title,
+          date: !!streamData.date,
+          telegramUrl: !!streamData.telegramUrl
+        }
+      })
     }
 
     const db = await getDatabase()
