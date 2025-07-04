@@ -301,10 +301,10 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
 const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete, onRefreshThumbnail, categories, showToast, hapticFeedback }) => {
   const [editData, setEditData] = useState({
     title: stream.title || '',
-    streamUrl: stream.streamUrl || '',
+    streamUrl: stream.streamUrl || stream.telegram_url || '',
     category: stream.category || '',
     tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
-    date: stream.date || '',
+    date: stream.date || stream.stream_date || '',
     thumbnail: stream.thumbnail || ''
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -313,10 +313,10 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
     if (isEditing) {
       setEditData({
         title: stream.title || '',
-        streamUrl: stream.streamUrl || '',
+        streamUrl: stream.streamUrl || stream.telegram_url || '',
         category: stream.category || '',
         tags: Array.isArray(stream.tags) ? stream.tags.join(', ') : '',
-        date: stream.date || '',
+        date: stream.date || stream.stream_date || '',
         thumbnail: typeof stream.thumbnail === 'object' && stream.thumbnail?.url 
           ? stream.thumbnail.url 
           : stream.thumbnail || ''
@@ -337,7 +337,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
         tags: editData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       }
       
-      await onSave(streamData, stream.id)
+      await onSave(streamData, stream.id || stream._id)
       onCancelEdit()
       showToast('Стрим обновлен', 'success')
       hapticFeedback('notification', 'success')
@@ -353,7 +353,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
     if (window.confirm('Удалить этот стрим?')) {
       setIsLoading(true)
       try {
-        await onDelete(stream.id)
+        await onDelete(stream.id || stream._id)
         showToast('Стрим удален', 'success')
         hapticFeedback('notification', 'success')
       } catch (error) {
@@ -368,7 +368,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
   const handleRefreshThumbnail = async () => {
     setIsLoading(true)
     try {
-      await onRefreshThumbnail(stream.id)
+      await onRefreshThumbnail(stream.id || stream._id)
       showToast('Превью обновлено', 'success')
       hapticFeedback('notification', 'success')
     } catch (error) {
@@ -537,7 +537,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
         
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
           <Calendar size={14} />
-          <span>{formatDateSafely(stream.date, 'dd MMM yyyy, HH:mm', { locale: ru })}</span>
+          <span>{formatDateSafely(stream.date || stream.stream_date, 'dd MMM yyyy, HH:mm', { locale: ru })}</span>
         </div>
 
         {stream.tags && stream.tags.length > 0 && (
@@ -720,24 +720,6 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
     }
   }
 
-  const handleRefreshThumbnail = async (streamId) => {
-    try {
-      const response = await axios.post(
-        `${API_CONFIG.baseURL}/streams/${streamId}/refresh-thumbnail`,
-        {},
-        { headers: API_CONFIG.getAuthHeaders() }
-      )
-      
-      if (response.data.success) {
-        fetchStreams()
-        if (onDataUpdate) onDataUpdate()
-      }
-    } catch (error) {
-      console.error('Error refreshing thumbnail:', error)
-      throw error
-    }
-  }
-
   // Фильтрация и группировка стримов
   const filteredStreams = streams.filter(stream => {
     if (!searchQuery) return true
@@ -747,13 +729,13 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       stream.title?.toLowerCase().includes(query) ||
       stream.category?.toLowerCase().includes(query) ||
       stream.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-      checkDateMatch(stream.date, query)
+      checkDateMatch(stream.date || stream.stream_date, query)
     )
   })
 
   // Группировка по датам
   const groupedStreams = filteredStreams.reduce((groups, stream) => {
-    const date = formatDateSafely(stream.date, 'dd MMMM yyyy', { locale: ru })
+    const date = formatDateSafely(stream.date || stream.stream_date, 'dd MMMM yyyy', { locale: ru })
     if (!groups[date]) {
       groups[date] = []
     }
@@ -763,8 +745,8 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
 
   // Сортировка групп по дате (новые сверху)
   const sortedGroupKeys = Object.keys(groupedStreams).sort((a, b) => {
-    const dateA = new Date(groupedStreams[a][0].date)
-    const dateB = new Date(groupedStreams[b][0].date)
+    const dateA = new Date(groupedStreams[a][0].date || groupedStreams[a][0].stream_date)
+    const dateB = new Date(groupedStreams[b][0].date || groupedStreams[b][0].stream_date)
     return dateB - dateA
   })
 
@@ -900,9 +882,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {groupedStreams[dateGroup].map(stream => (
                       <StreamCard
-                        key={stream.id}
+                        key={stream.id || stream._id}
                         stream={stream}
-                        isEditing={editingStream?.id === stream.id}
+                        isEditing={editingStream?.id === stream.id || editingStream?._id === stream._id}
                         onEdit={setEditingStream}
                         onCancelEdit={() => setEditingStream(null)}
                         onSave={handleUpdateStream}
