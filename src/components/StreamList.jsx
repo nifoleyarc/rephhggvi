@@ -127,7 +127,7 @@ const getCategoryColor = (categoryId) => {
   }
 }
 
-const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCategories = false, renderOnlyContent = false, selectedCategory: externalSelectedCategory, onCategoryChange, onSearchFocus }) => {
+const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCategories = false, renderOnlyContent = false, selectedCategory: externalSelectedCategory, onCategoryChange, onSearchFocus, apiConnected = false }) => {
   const [internalSelectedCategory, setInternalSelectedCategory] = useState('all')
   
   // Используем внешнее состояние, если передано, иначе внутреннее
@@ -781,6 +781,21 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
               Найдено: {filteredAndSortedStreams.length} из {streams.length}
             </div>
           )}
+          
+          {/* Индикатор статуса API */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-tg-hint">
+              <div className={`w-2 h-2 rounded-full ${apiConnected ? 'bg-green-500' : 'bg-yellow-500'}`} />
+              <span>
+                {apiConnected ? 'API подключен' : 'Демо-режим'}
+              </span>
+            </div>
+            {!apiConnected && (
+              <span className="text-xs text-tg-hint">
+                Показаны демо-данные
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Сортировка */}

@@ -15,7 +15,7 @@ function App() {
   const [showHeaderSearch, setShowHeaderSearch] = useState(false)
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0)
   const { tg, user } = useTelegram()
-  const { streams, categories, loading, fetchStreams } = useStreams()
+  const { streams, categories, loading, fetchStreams, apiConnected } = useStreams()
   const { showToast, ToastContainer } = useToast()
   const contentRef = useRef(null)
 
@@ -170,6 +170,7 @@ function App() {
                     }
                   }}
                   renderOnlyCategories={true}
+                  apiConnected={apiConnected}
                 />
               </div>
             </div>
@@ -189,6 +190,7 @@ function App() {
                 }}
                 renderOnlyContent={true}
                 onSearchFocus={searchFocusTrigger}
+                apiConnected={apiConnected}
               />
             </div>
           </motion.div>
