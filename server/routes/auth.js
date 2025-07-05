@@ -171,51 +171,7 @@ router.post('/', async (req, res) => {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const passwordHash = process.env.EDITOR_PASSWORD_HASH
 
-    // Способ 1: Аутентификация админа по Telegram User ID
-    if (initData && adminUserId && botToken) {
-      console.log('Attempting Telegram admin authentication')
-      
-      // Проверяем подпись initData для безопасности
-      const isValidInitData = verifyTelegramInitData(initData, botToken)
-      
-      if (!isValidInitData) {
-        console.log('Invalid Telegram initData signature')
-        return res.status(401).json({ success: false, error: 'Invalid Telegram data' })
-      }
-
-      // Извлекаем данные пользователя
-      const user = getUserFromInitData(initData)
-      
-      if (!user || !user.id) {
-        console.log('No user data in initData')
-        return res.status(401).json({ success: false, error: 'No user data' })
-      }
-
-      // Проверяем, что это админ
-      if (user.id.toString() === adminUserId.toString()) {
-        console.log(`Admin authenticated: ${user.first_name} (${user.id})`)
-        
-        // Сбрасываем счетчик попыток при успешной аутентификации админа
-        await checkAndUpdateAttempts(clientIP, true)
-        
-        return res.status(200).json({ 
-          success: true, 
-          method: 'telegram',
-          user: {
-            id: user.id,
-            first_name: user.first_name,
-            username: user.username
-          }
-        })
-      } else {
-        console.log(`Access denied for user: ${user.first_name} (${user.id}) - not admin`)
-        
-        // НЕ записываем как неудачную попытку - пользователь просто не админ
-        return res.status(403).json({ success: false, error: 'Access denied' })
-      }
-    }
-
-    // Способ 2: Аутентификация по паролю (резервный способ)
+    // Способ 1: Аутентификация по паролю (приоритет)
     if (password) {
       console.log('Attempting password authentication')
       
@@ -272,6 +228,50 @@ router.post('/', async (req, res) => {
         console.log(`Adding ${delay}ms delay for failed attempt ${attemptResult.attempts}/${MAX_ATTEMPTS}`)
         await new Promise(resolve => setTimeout(resolve, delay))
         return res.status(401).json({ success: false, error: 'Invalid password' })
+      }
+    }
+
+    // Способ 2: Аутентификация админа по Telegram User ID (только если пароль не предоставлен)
+    if (initData && adminUserId && botToken) {
+      console.log('Attempting Telegram admin authentication')
+      
+      // Проверяем подпись initData для безопасности
+      const isValidInitData = verifyTelegramInitData(initData, botToken)
+      
+      if (!isValidInitData) {
+        console.log('Invalid Telegram initData signature')
+        return res.status(401).json({ success: false, error: 'Invalid Telegram data' })
+      }
+
+      // Извлекаем данные пользователя
+      const user = getUserFromInitData(initData)
+      
+      if (!user || !user.id) {
+        console.log('No user data in initData')
+        return res.status(401).json({ success: false, error: 'No user data' })
+      }
+
+      // Проверяем, что это админ
+      if (user.id.toString() === adminUserId.toString()) {
+        console.log(`Admin authenticated: ${user.first_name} (${user.id})`)
+        
+        // Сбрасываем счетчик попыток при успешной аутентификации админа
+        await checkAndUpdateAttempts(clientIP, true)
+        
+        return res.status(200).json({ 
+          success: true, 
+          method: 'telegram',
+          user: {
+            id: user.id,
+            first_name: user.first_name,
+            username: user.username
+          }
+        })
+      } else {
+        console.log(`Access denied for user: ${user.first_name} (${user.id}) - not admin`)
+        
+        // НЕ записываем как неудачную попытку - пользователь просто не админ
+        return res.status(403).json({ success: false, error: 'Access denied' })
       }
     }
 
