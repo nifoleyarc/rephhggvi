@@ -422,7 +422,6 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   const handleCategoryClick = (e, categoryId) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Category clicked:', categoryId) // Для дебага
     handleCategoryChange(categoryId)
   }
 
