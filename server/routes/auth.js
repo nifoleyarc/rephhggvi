@@ -20,7 +20,7 @@ function getClientIP(req) {
 }
 
 // Функция для проверки и обновления попыток входа
-async function checkAndUpdateAttempts(ip, success = false) {
+async function checkAndUpdateAttempts(ip, success = false, checkOnly = false) {
   const db = await getDatabase()
   
   try {
@@ -30,7 +30,11 @@ async function checkAndUpdateAttempts(ip, success = false) {
     let record = await db.get('SELECT * FROM auth_attempts WHERE ip = ?', [ip])
 
     if (!record) {
-      // Создаем новую запись
+      // Создаем новую запись только если это не просто проверка
+      if (checkOnly) {
+        return { banned: false }
+      }
+      
       record = {
         ip,
         attempts: 0,
@@ -54,6 +58,11 @@ async function checkAndUpdateAttempts(ip, success = false) {
     if (record.banned_until && new Date(record.banned_until) <= now) {
       await db.run('DELETE FROM auth_attempts WHERE ip = ?', [ip])
       console.log(`Ban expired for IP ${ip}, clearing record`)
+      return { banned: false }
+    }
+
+    // Если это только проверка, не записываем попытку
+    if (checkOnly) {
       return { banned: false }
     }
 
@@ -210,8 +219,8 @@ router.post('/', async (req, res) => {
     if (password) {
       console.log('Attempting password authentication')
       
-      // Проверяем, не забанен ли IP перед попыткой пароля
-      const banCheck = await checkAndUpdateAttempts(clientIP)
+      // Проверяем, не забанен ли IP перед попыткой пароля (без записи попытки)
+      const banCheck = await checkAndUpdateAttempts(clientIP, false, true)
       
       if (banCheck.banned) {
         const minutesRemaining = Math.ceil(banCheck.remainingTime / (60 * 1000))
