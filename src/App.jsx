@@ -14,7 +14,7 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showHeaderSearch, setShowHeaderSearch] = useState(false)
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0)
-  const { tg, user } = useTelegram()
+  const { tg, user, openTelegramLinkWithoutClosing } = useTelegram()
   const { streams, categories, loading, fetchStreams, apiConnected } = useStreams()
   const { showToast, ToastContainer } = useToast()
   const contentRef = useRef(null)
@@ -111,7 +111,7 @@ function App() {
             {/* Header + Categories (Sticky) */}
             <div className="sticky top-0 z-10 bg-tg-bg border-b border-gray-700/50">
               {/* Header */}
-              <div className="flex items-center justify-between p-4">
+              <div className="flex items-center justify-between p-4 pb-2">
                 <h1 className="text-xl font-roobert-bold">
                   VODS{" "}
                   <span className="text-sm font-roobert-light text-gray-400">
@@ -119,11 +119,7 @@ function App() {
                     <span 
                       className="cursor-pointer hover:text-emerald-400 transition-colors"
                       onClick={() => {
-                        if (tg) {
-                          tg.openTelegramLink('https://t.me/nikothan')
-                        } else {
-                          window.open('https://t.me/nikothan', '_blank')
-                        }
+                        openTelegramLinkWithoutClosing('https://t.me/nikothan')
                       }}
                     >
                       @nikothan
@@ -156,6 +152,13 @@ function App() {
                 </div>
               </div>
               
+              {/* Подсказка */}
+              <div className="px-4 pb-2">
+                <div className="text-xs text-tg-hint font-roobert-light text-center">
+                  💡 Нажмите на стрим для перехода (приложение закроется) или долго нажмите (приложение останется открытым)
+                </div>
+              </div>
+              
               {/* Categories */}
               <div className="pb-3">
                 <StreamList 
@@ -164,11 +167,20 @@ function App() {
                   loading={loading}
                   selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
-                  onStreamClick={(stream) => {
-                    if (tg) {
+                                  onStreamClick={(stream, isLongPress = false) => {
+                  if (tg) {
+                    if (isLongPress) {
+                      // Долгое нажатие - открыть без закрытия приложения
                       tg.openTelegramLink(stream.telegramUrl)
+                    } else {
+                      // Обычный клик - открыть и закрыть приложение
+                      tg.openTelegramLink(stream.telegramUrl)
+                      setTimeout(() => {
+                        tg.close()
+                      }, 100)
                     }
-                  }}
+                  }
+                }}
                   renderOnlyCategories={true}
                   apiConnected={apiConnected}
                 />
@@ -183,9 +195,18 @@ function App() {
                 loading={loading}
                 selectedCategory={selectedCategory}
                 onCategoryChange={setSelectedCategory}
-                onStreamClick={(stream) => {
+                onStreamClick={(stream, isLongPress = false) => {
                   if (tg) {
-                    tg.openTelegramLink(stream.telegramUrl)
+                    if (isLongPress) {
+                      // Долгое нажатие - открыть без закрытия приложения
+                      tg.openTelegramLink(stream.telegramUrl)
+                    } else {
+                      // Обычный клик - открыть и закрыть приложение
+                      tg.openTelegramLink(stream.telegramUrl)
+                      setTimeout(() => {
+                        tg.close()
+                      }, 100)
+                    }
                   }
                 }}
                 renderOnlyContent={true}

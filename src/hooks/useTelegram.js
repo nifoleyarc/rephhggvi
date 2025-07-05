@@ -41,6 +41,18 @@ export function useTelegram() {
   const openTelegramLink = (url) => {
     if (tg) {
       tg.openTelegramLink(url)
+      // Небольшая задержка перед закрытием, чтобы ссылка успела открыться
+      setTimeout(() => {
+        tg.close()
+      }, 100)
+    } else {
+      window.open(url, '_blank')
+    }
+  }
+
+  const openTelegramLinkWithoutClosing = (url) => {
+    if (tg) {
+      tg.openTelegramLink(url)
     } else {
       window.open(url, '_blank')
     }
@@ -52,6 +64,7 @@ export function useTelegram() {
     themeParams,
     hapticFeedback,
     openTelegramLink,
+    openTelegramLinkWithoutClosing,
     initData: tg?.initData // Добавляем initData для авторизации
   }
 }

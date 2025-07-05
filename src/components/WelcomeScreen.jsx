@@ -105,13 +105,22 @@ const WelcomeScreen = ({ onCategorySelect }) => {
             VODS
           </motion.h1>
           <motion.p 
-            className="text-base text-tg-hint font-roobert-light"
+            className="text-base text-tg-hint font-roobert-light mb-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2, delay: 0.1 }}
           >
             Выберите категорию для просмотра стримов
           </motion.p>
+          <motion.div 
+            className="text-xs text-tg-hint font-roobert-light max-w-xs mx-auto p-3 bg-gray-800/30 rounded-lg border border-gray-700/30"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2, delay: 0.2 }}
+          >
+            💡 <strong>Совет:</strong> Обычное нажатие по стриму закроет приложение. 
+            Долгое нажатие — откроет стрим и оставит приложение открытым.
+          </motion.div>
         </motion.div>
 
         {/* Сетка категорий */}
