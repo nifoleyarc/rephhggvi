@@ -805,7 +805,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
           className="bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Вход в редактор</h2>
+            <h2 className="text-xl font-bold text-white">Панель управления</h2>
             <button
               onClick={onClose}
               className="p-2 text-gray-400 hover:text-white transition-colors"
