@@ -65,91 +65,7 @@ const CATEGORY_MAPPING = {
 const TAG_REGEX = /#[a-zA-Z0-9а-яёА-ЯЁ_]+/gi // Поддержка всех русских букв + регистр
 const DATE_REGEX = /\b\d{1,2}\.\d{1,2}\.(\d{2}|\d{4})\b/
 
-// ============================================================================
-// 🤖 ОБРАБОТКА КОМАНД ПОЛЬЗОВАТЕЛЕЙ
-// ============================================================================
 
-// Функция для отправки сообщения пользователю
-async function sendMessage(chatId, text, replyMarkup = null) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
-  
-  if (!botToken) {
-    console.error('❌ TELEGRAM_BOT_TOKEN не установлен')
-    return false
-  }
-
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`
-  
-  const payload = {
-    chat_id: chatId,
-    text: text,
-    parse_mode: 'Markdown'
-  }
-
-  if (replyMarkup) {
-    payload.reply_markup = replyMarkup
-  }
-
-  try {
-    const response = await axios.post(url, payload)
-    return response.data.ok
-  } catch (error) {
-    console.error('❌ Ошибка отправки сообщения:', error.response?.data || error.message)
-    return false
-  }
-}
-
-// Обработка команд пользователей
-async function handleUserMessage(message, res) {
-  const chatId = message.chat.id
-  const text = message.text || ''
-  const userId = message.from.id
-  const userName = message.from.first_name || 'Пользователь'
-  
-  console.log(`👤 Сообщение от пользователя: ${userName} (ID: ${userId})`)
-  console.log(`💬 Текст: "${text}"`)
-  
-  // Обрабатываем только команду /start
-  if (!text.startsWith('/start')) {
-    console.log('❌ Игнорируем сообщение - не команда /start')
-    return res.status(200).json({ ok: true, message: 'Not a start command' })
-  }
-  
-  console.log('✅ Обработка команды /start')
-  
-  // Получаем URL Mini App
-  const miniAppUrl = process.env.MINI_APP_URL || 'https://your-mini-app.com'
-  
-  // Приветственное сообщение
-  const welcomeMessage = `🎬 Добро пожаловать в архив стримов GENSYXA!
-
-👇 Нажмите кнопку ниже, чтобы открыть приложение:`
-  
-  // Inline кнопка для Mini App
-  const inlineKeyboard = {
-    inline_keyboard: [
-      [
-        {
-          text: '🚀 Открыть приложение',
-          web_app: {
-            url: miniAppUrl
-          }
-        }
-      ]
-    ]
-  }
-  
-  // Отправляем ответ
-  const sent = await sendMessage(chatId, welcomeMessage, inlineKeyboard)
-  
-  if (sent) {
-    console.log('✅ Приветственное сообщение отправлено')
-    return res.status(200).json({ ok: true, message: 'Start command processed' })
-  } else {
-    console.log('❌ Не удалось отправить приветственное сообщение')
-    return res.status(500).json({ ok: false, message: 'Failed to send message' })
-  }
-}
 
 // ============================================================================
 // 🖼️ ГЕНЕРАЦИЯ ПРЕВЬЮ
@@ -316,15 +232,16 @@ router.post('/', async (req, res) => {
     console.log('✅ Webhook secret проверен')
     console.log('📋 Тип обновления:', Object.keys(update).join(', '))
     
-    // Обработка команд пользователей
+    // Игнорируем команды пользователей (их обрабатывает Telegraf)
     if (update.message) {
-      return await handleUserMessage(update.message, res)
+      console.log('❌ Команды пользователей обрабатывает Telegraf - игнорируем')
+      return res.status(200).json({ ok: true, message: 'User commands handled by Telegraf' })
     }
     
     // Обработка постов канала
     if (!update.channel_post) {
-      console.log('❌ Обновление не содержит ни channel_post, ни message')
-      return res.status(200).json({ ok: true, message: 'Not a channel post or message' })
+      console.log('❌ Обновление не содержит channel_post')
+      return res.status(200).json({ ok: true, message: 'Not a channel post' })
     }
     
     const channelPost = update.channel_post

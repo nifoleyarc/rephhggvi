@@ -18,6 +18,9 @@ import thumbnailRoutes from './server/routes/thumbnails.js'
 import { requireAuth, requireReadAuth, requireDataAccess, logAuth } from './server/middleware/auth.js'
 import { rateLimit } from './server/middleware/rateLimit.js'
 
+// Импортируем Telegraf бота
+import telegrafBot from './server/bot/telegrafBot.js'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -78,12 +81,31 @@ app.use((err, req, res, next) => {
 })
 
 // Запуск сервера
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📱 Frontend: http://localhost:${PORT}`)
   console.log(`🔗 API: http://localhost:${PORT}/api`)
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
-  console.log(`🤖 Bot commands: обрабатываются через webhook /api/webhook`)
+  
+  // Запускаем Telegraf бота
+  console.log('🤖 Запуск Telegraf бота...')
+  const botStarted = await telegrafBot.start()
+  
+  if (botStarted) {
+    console.log('✅ Telegraf бот запущен (polling)')
+  } else {
+    console.warn('⚠️ Telegraf бот не запущен')
+  }
 })
+
+// Graceful shutdown
+const gracefulShutdown = () => {
+  console.log('🛑 Получен сигнал завершения...')
+  telegrafBot.stop()
+  process.exit(0)
+}
+
+process.on('SIGTERM', gracefulShutdown)
+process.on('SIGINT', gracefulShutdown)
 
 export default app 
