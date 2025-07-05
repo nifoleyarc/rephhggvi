@@ -14,7 +14,7 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showHeaderSearch, setShowHeaderSearch] = useState(false)
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0)
-  const { tg, user, openTelegramLink } = useTelegram()
+  const { tg, user, openTelegramLink, openTelegramLinkWithoutClosing } = useTelegram()
   const { streams, categories, loading, fetchStreams, apiConnected } = useStreams()
   const { showToast, ToastContainer } = useToast()
   const contentRef = useRef(null)
@@ -119,7 +119,7 @@ function App() {
                     <span 
                       className="cursor-pointer hover:text-emerald-400 transition-colors"
                       onClick={() => {
-                        openTelegramLink('https://t.me/nikothan')
+                        openTelegramLinkWithoutClosing('https://t.me/nikothan')
                       }}
                     >
                       @nikothan

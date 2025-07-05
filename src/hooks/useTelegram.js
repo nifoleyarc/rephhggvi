@@ -49,7 +49,13 @@ export function useTelegram() {
     }
   }
 
-
+  const openTelegramLinkWithoutClosing = (url) => {
+    if (tg) {
+      tg.openTelegramLink(url)
+    } else {
+      window.open(url, '_blank')
+    }
+  }
 
   return {
     tg,
@@ -57,6 +63,7 @@ export function useTelegram() {
     themeParams,
     hapticFeedback,
     openTelegramLink,
+    openTelegramLinkWithoutClosing,
     initData: tg?.initData // Добавляем initData для авторизации
   }
 }
