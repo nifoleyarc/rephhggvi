@@ -40,7 +40,7 @@ export function useTelegram() {
 
   const openTelegramLink = (url) => {
     if (tg) {
-      tg.openTelegramLink(url)
+      tg.openLink(url)
     } else {
       window.open(url, '_blank')
     }

@@ -120,7 +120,7 @@ function App() {
                       className="cursor-pointer hover:text-emerald-400 transition-colors"
                       onClick={() => {
                         if (tg) {
-                          tg.openTelegramLink('https://t.me/nikothan')
+                          tg.openLink('https://t.me/nikothan')
                         } else {
                           window.open('https://t.me/nikothan', '_blank')
                         }
@@ -162,13 +162,13 @@ function App() {
                   streams={streams} 
                   categories={categories}
                   loading={loading}
-                  selectedCategory={selectedCategory}
+                                    selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
-                                onStreamClick={(stream) => {
-                  if (tg) {
-                    tg.openTelegramLink(stream.telegramUrl)
-                  }
-                }}
+                  onStreamClick={(stream) => {
+                    if (tg) {
+                      tg.openLink(stream.telegramUrl)
+                    }
+                  }}
                   renderOnlyCategories={true}
                   apiConnected={apiConnected}
                 />
@@ -185,7 +185,7 @@ function App() {
                 onCategoryChange={setSelectedCategory}
                 onStreamClick={(stream) => {
                   if (tg) {
-                    tg.openTelegramLink(stream.telegramUrl)
+                    tg.openLink(stream.telegramUrl)
                   }
                 }}
                 renderOnlyContent={true}
