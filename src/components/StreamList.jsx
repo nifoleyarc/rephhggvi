@@ -492,41 +492,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     onStreamClick(stream)
   }
 
-  // Для долгого нажатия
-  const longPressTimerRef = useRef(null)
-  const isLongPressRef = useRef(false)
 
-  const handleStreamMouseDown = (stream) => {
-    isLongPressRef.current = false
-    longPressTimerRef.current = setTimeout(() => {
-      isLongPressRef.current = true
-      hapticFeedback('impact', 'medium')
-      // Передаем информацию о том, что это долгое нажатие
-      onStreamClick(stream, true)
-    }, 500)
-  }
-
-  const handleStreamMouseUp = (stream) => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-    }
-    
-    if (!isLongPressRef.current) {
-      // Обычный клик
-      setTimeout(() => {
-        if (!isLongPressRef.current) {
-          handleStreamClick(stream)
-        }
-      }, 0)
-    }
-  }
-
-  const handleStreamMouseLeave = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-    }
-    isLongPressRef.current = false
-  }
 
   if (loading && !renderOnlyCategories) {
     return <LoadingSkeleton />
@@ -660,12 +626,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         {filteredAndSortedStreams.map((stream, index) => (
           <div
             key={stream._id}
-            onMouseDown={() => handleStreamMouseDown(stream)}
-            onMouseUp={() => handleStreamMouseUp(stream)}
-            onMouseLeave={handleStreamMouseLeave}
-            onTouchStart={() => handleStreamMouseDown(stream)}
-            onTouchEnd={() => handleStreamMouseUp(stream)}
-            onTouchCancel={handleStreamMouseLeave}
+            onClick={() => handleStreamClick(stream)}
             className="stream-card"
           >
             <div className="flex gap-4 py-3 pr-3">
