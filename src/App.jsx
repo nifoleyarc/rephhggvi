@@ -113,7 +113,7 @@ function App() {
               {/* Header */}
               <div className="flex items-center justify-between p-4">
                 <h1 className="text-xl font-roobert-bold">
-                  💚 VODS{" "}
+                  VODS{" "}
                   <span className="text-sm font-roobert-light text-gray-400">
                     by{" "}
                     <span 
