@@ -14,7 +14,7 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showHeaderSearch, setShowHeaderSearch] = useState(false)
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0)
-  const { tg, user } = useTelegram()
+  const { tg, user, openTelegramLink } = useTelegram()
   const { streams, categories, loading, fetchStreams, apiConnected } = useStreams()
   const { showToast, ToastContainer } = useToast()
   const contentRef = useRef(null)
@@ -119,11 +119,7 @@ function App() {
                     <span 
                       className="cursor-pointer hover:text-emerald-400 transition-colors"
                       onClick={() => {
-                        if (tg) {
-                          tg.openLink('https://t.me/nikothan')
-                        } else {
-                          window.open('https://t.me/nikothan', '_blank')
-                        }
+                        openTelegramLink('https://t.me/nikothan')
                       }}
                     >
                       @nikothan
@@ -165,9 +161,7 @@ function App() {
                                     selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
                   onStreamClick={(stream) => {
-                    if (tg) {
-                      tg.openLink(stream.telegramUrl)
-                    }
+                    openTelegramLink(stream.telegramUrl)
                   }}
                   renderOnlyCategories={true}
                   apiConnected={apiConnected}
@@ -184,9 +178,7 @@ function App() {
                 selectedCategory={selectedCategory}
                 onCategoryChange={setSelectedCategory}
                 onStreamClick={(stream) => {
-                  if (tg) {
-                    tg.openLink(stream.telegramUrl)
-                  }
+                  openTelegramLink(stream.telegramUrl)
                 }}
                 renderOnlyContent={true}
                 onSearchFocus={searchFocusTrigger}
