@@ -630,7 +630,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
           >
             <div className="flex gap-4 py-3 pr-3">
               {/* Превью */}
-              <div className="relative w-36 h-20 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
+              <div className="relative w-40 h-24 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
                 {stream.thumbnail ? (
                   <ThumbnailImage thumbnail={stream.thumbnail} />
                 ) : (
@@ -832,7 +832,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
           >
             <div className="flex gap-4 py-3 pr-3">
               {/* Превью */}
-              <div className="relative w-36 h-20 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
+              <div className="relative w-40 h-24 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
                 {stream.thumbnail ? (
                   <ThumbnailImage thumbnail={stream.thumbnail} />
                 ) : (
@@ -906,7 +906,7 @@ const LoadingSkeleton = () => (
       {[...Array(6)].map((_, i) => (
         <div key={i} className="stream-card">
           <div className="flex gap-4 py-3 pr-3">
-            <div className="loading-skeleton w-36 h-20 rounded-lg flex-shrink-0" />
+            <div className="loading-skeleton w-40 h-24 rounded-lg flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <div className="loading-skeleton h-4 w-3/4 rounded" />
               <div className="loading-skeleton h-3 w-1/2 rounded" />
