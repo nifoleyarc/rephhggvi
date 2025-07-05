@@ -21,8 +21,8 @@ export function useTelegram() {
       document.documentElement.style.setProperty('--tg-color-button-text', '#ffffff')
       document.documentElement.style.setProperty('--tg-color-secondary-bg', '#2d2d2d')
 
-      // Включаем подтверждение при закрытии
-      telegram.enableClosingConfirmation()
+      // Отключаем предупреждение при закрытии
+      telegram.disableClosingConfirmation()
     }
   }, [])
 
