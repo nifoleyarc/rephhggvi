@@ -7,7 +7,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(30, 58, 138, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Французский флаг - прозрачные тона
     direction: 'to right',
-    backgroundTransparency: '60',
+    backgroundTransparency: '40',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
