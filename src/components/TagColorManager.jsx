@@ -67,11 +67,6 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
         color: config.textColor || '#FFFFFF'
       }
       
-      // Добавляем прозрачность для градиента если указана
-      if (config.opacity && config.opacity !== '100') {
-        style.opacity = config.opacity / 100
-      }
-      
       // Добавляем textShadow если есть
       if (config.textShadow) {
         style.textShadow = config.textShadow
@@ -92,13 +87,8 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
       const rgb = hexToRgb(color)
       if (rgb) {
         const style = {
-          backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${config.bgOpacity || '40'})`,
+          backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${config.backgroundTransparency || '40'})`,
           color: config.textColor || '#E5E7EB'
-        }
-        
-        // Добавляем прозрачность если указана
-        if (config.opacity && config.opacity !== '100') {
-          style.opacity = config.opacity / 100
         }
         
         // Добавляем textShadow если есть
@@ -122,9 +112,8 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
     setTempColorConfig(tagColors[tag] || {
       type: 'solid',
       colors: ['#3B82F6'],
-      bgOpacity: '40',
-      textColor: '#FFFFFF',
-      opacity: '100'
+      backgroundTransparency: '40',
+      textColor: '#FFFFFF'
     })
   }
 

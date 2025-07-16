@@ -31,8 +31,7 @@ const GradientColorPicker = ({
   const [colorType, setColorType] = useState(value?.type || 'solid')
   const [colors, setColors] = useState(value?.colors || ['#3B82F6'])
   const [direction, setDirection] = useState(value?.direction || 'to right')
-  const [bgOpacity, setBgOpacity] = useState(value?.bgOpacity || '40')
-  const [opacity, setOpacity] = useState(value?.opacity || '100')
+  const [backgroundTransparency, setBackgroundTransparency] = useState(value?.backgroundTransparency || '40')
   const [textColor, setTextColor] = useState(value?.textColor || '#FFFFFF')
   const [textShadow, setTextShadow] = useState(value?.textShadow || '')
 
@@ -42,8 +41,7 @@ const GradientColorPicker = ({
       setColorType(value.type || 'solid')
       setColors(value.colors || ['#3B82F6'])
       setDirection(value.direction || 'to right')
-      setBgOpacity(value.bgOpacity || '40')
-      setOpacity(value.opacity || '100')
+      setBackgroundTransparency(value.backgroundTransparency || '40')
       setTextColor(value.textColor || '#FFFFFF')
       setTextShadow(value.textShadow || '')
     }
@@ -55,8 +53,7 @@ const GradientColorPicker = ({
       type: colorType,
       colors: colors,
       direction: direction,
-      bgOpacity: bgOpacity,
-      opacity: opacity,
+      backgroundTransparency: backgroundTransparency,
       textColor: textColor
     }
     
@@ -71,7 +68,7 @@ const GradientColorPicker = ({
   // Вызываем notifyChange при любом изменении
   useEffect(() => {
     notifyChange()
-  }, [colorType, colors, direction, bgOpacity, opacity, textColor, textShadow])
+  }, [colorType, colors, direction, backgroundTransparency, textColor, textShadow])
 
   const addColor = () => {
     if (colors.length < 5) {
@@ -98,11 +95,6 @@ const GradientColorPicker = ({
         color: textColor
       }
       
-      // Добавляем общую прозрачность
-      if (opacity && opacity !== '100') {
-        style.opacity = opacity / 100
-      }
-      
       // Добавляем textShadow если есть
       if (textShadow) {
         style.textShadow = textShadow
@@ -123,13 +115,8 @@ const GradientColorPicker = ({
       const rgb = hexToRgb(color)
       if (rgb) {
         const style = {
-          backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${bgOpacity})`,
+          backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${backgroundTransparency})`,
           color: textColor
-        }
-        
-        // Добавляем общую прозрачность
-        if (opacity && opacity !== '100') {
-          style.opacity = opacity / 100
         }
         
         // Добавляем textShadow если есть
@@ -309,40 +296,22 @@ const GradientColorPicker = ({
                 </div>
               )}
 
-              {/* Прозрачность фона (только для обычного цвета) */}
-              {colorType === 'solid' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Прозрачность фона: {bgOpacity}%
-                  </label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    step="10"
-                    value={bgOpacity}
-                    onChange={(e) => setBgOpacity(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-              )}
-
-              {/* Общая прозрачность тега */}
+              {/* Прозрачность фона */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Общая прозрачность тега: {opacity}%
+                  Прозрачность фона: {backgroundTransparency}%
                 </label>
                 <input
                   type="range"
                   min="10"
                   max="100"
                   step="10"
-                  value={opacity}
-                  onChange={(e) => setOpacity(e.target.value)}
+                  value={backgroundTransparency}
+                  onChange={(e) => setBackgroundTransparency(e.target.value)}
                   className="w-full"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Влияет на весь тег целиком (цвет + текст)
+                  Влияет только на фон тега, текст остается непрозрачным
                 </p>
               </div>
 

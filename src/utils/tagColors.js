@@ -7,6 +7,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(30, 58, 138, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Французский флаг - прозрачные тона
     direction: 'to right',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -14,6 +15,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient', 
     colors: ['rgba(243, 244, 246, 0.7) 50%', 'rgba(185, 28, 28, 0.7) 50%'], // Польский флаг - прозрачный
     direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -21,6 +23,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(185, 28, 28, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 83.33%', 'rgba(185, 28, 28, 0.7) 83.33%'], // Тайский флаг - прозрачные тона
     direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -28,6 +31,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(185, 28, 28, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // Испанский флаг - прозрачные тона
     direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -35,6 +39,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(185, 28, 28, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Австрийский флаг - прозрачный
     direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -42,6 +47,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(243, 244, 246, 0.7) 80%', 'rgba(185, 28, 28, 0.7) 80%'], // Грузинский флаг - прозрачный
     direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -49,6 +55,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(22, 101, 52, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // ОАЭ флаг - прозрачные тона
     direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
@@ -56,6 +63,7 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(22, 101, 52, 0.7) 40%', 'rgba(185, 28, 28, 0.7) 40%'], // Португальский флаг - прозрачные тона
     direction: 'to right',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   }
@@ -66,49 +74,49 @@ const DEFAULT_TAG_COLORS = {
   'ирл': {
     type: 'solid',
     colors: ['#3B82F6'], // blue-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#93C5FD' // blue-200
   },
   'фильм': {
     type: 'solid',
     colors: ['#8B5CF6'], // purple-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#C4B5FD' // purple-200
   },
   'just_chatting': {
     type: 'solid',
     colors: ['#3B82F6'], // blue-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#93C5FD' // blue-200
   },
   'игры': {
     type: 'solid',
     colors: ['#EF4444'], // red-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#FCA5A5' // red-200
   },
   'контент': {
     type: 'solid',
     colors: ['#059669'], // green-600
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#86EFAC' // green-200
   },
   'шоу': {
     type: 'solid',
     colors: ['#8B5CF6'], // purple-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#C4B5FD' // purple-200
   },
   'кукинг': {
     type: 'solid',
     colors: ['#10B981'], // emerald-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#6EE7B7' // emerald-200
   },
   'марафон': {
     type: 'solid',
     colors: ['#F59E0B'], // amber-500
-    bgOpacity: '40',
+    backgroundTransparency: '40',
     textColor: '#FCD34D' // amber-200
   }
 }
@@ -155,16 +163,40 @@ export const getTagColor = (tag) => {
   
   if (colorConfig.type === 'gradient') {
     // Создаем CSS-класс для градиента с четкими границами
-    const gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.join(', ')})`
+    let gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.join(', ')})`
+    
+    // Применяем прозрачность фона к градиенту если указана
+    if (colorConfig.backgroundTransparency && colorConfig.backgroundTransparency !== '100') {
+      const transparency = colorConfig.backgroundTransparency / 100
+      gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.map(color => {
+        // Если цвет уже содержит rgba, меняем прозрачность
+        if (color.includes('rgba')) {
+          return color.replace(/rgba\(([^)]+)\)/g, (match, content) => {
+            const parts = content.split(',')
+            if (parts.length >= 4) {
+              // Заменяем последний параметр (прозрачность)
+              parts[3] = ` ${transparency}`
+              return `rgba(${parts.join(',')})`
+            }
+            return match
+          })
+        }
+        // Если цвет в формате hex, конвертируем в rgba
+        if (color.startsWith('#')) {
+          const hex = color.replace('#', '')
+          const r = parseInt(hex.substr(0, 2), 16)
+          const g = parseInt(hex.substr(2, 2), 16)
+          const b = parseInt(hex.substr(4, 2), 16)
+          return `rgba(${r}, ${g}, ${b}, ${transparency})`
+        }
+        return color
+      }).join(', ')})`
+    }
+    
     const style = {
       background: gradient,
       color: colorConfig.textColor || '#FFFFFF',
       backgroundClip: 'padding-box'
-    }
-    
-    // Добавляем общую прозрачность для градиента
-    if (colorConfig.opacity && colorConfig.opacity !== '100') {
-      style.opacity = colorConfig.opacity / 100
     }
     
     // Добавляем textShadow если есть
@@ -176,7 +208,7 @@ export const getTagColor = (tag) => {
   } else {
     // Обычный цвет
     const bgColor = colorConfig.colors[0]
-    const bgOpacity = colorConfig.bgOpacity || '40'
+    const backgroundTransparency = colorConfig.backgroundTransparency || '40'
     const textColor = colorConfig.textColor || '#E5E7EB'
     
     // Конвертируем hex в rgb для прозрачности фона
@@ -192,13 +224,8 @@ export const getTagColor = (tag) => {
     const rgb = hexToRgb(bgColor)
     if (rgb) {
       const style = {
-        backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${bgOpacity})`,
+        backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${backgroundTransparency})`,
         color: textColor
-      }
-      
-      // Добавляем общую прозрачность
-      if (colorConfig.opacity && colorConfig.opacity !== '100') {
-        style.opacity = colorConfig.opacity / 100
       }
       
       // Добавляем textShadow если есть
