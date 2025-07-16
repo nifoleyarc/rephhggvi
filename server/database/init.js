@@ -82,16 +82,35 @@ async function createTables(db) {
     )
   `)
 
+  // Таблица цветов тегов (глобальная настройка)
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS tag_colors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tag TEXT NOT NULL UNIQUE,
+      color_type TEXT NOT NULL DEFAULT 'solid', -- 'solid' или 'gradient'
+      solid_color TEXT, -- hex цвет для solid
+      gradient_type TEXT, -- направление градиента для gradient (linear-to-r, linear-to-br и т.д.)
+      gradient_colors TEXT, -- JSON массив цветов для градиента
+      background_transparency INTEGER DEFAULT 100, -- прозрачность фона 10-100%
+      text_color TEXT DEFAULT '#ffffff', -- цвет текста
+      text_shadow TEXT, -- тень текста
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // Создаем индексы для оптимизации
   await db.exec(`
     CREATE INDEX IF NOT EXISTS idx_streams_date ON streams(stream_date DESC);
     CREATE INDEX IF NOT EXISTS idx_streams_telegram_url ON streams(telegram_url);
     CREATE INDEX IF NOT EXISTS idx_streams_message ON streams(message_id, chat_id);
     CREATE INDEX IF NOT EXISTS idx_auth_attempts_ip ON auth_attempts(ip);
+    CREATE INDEX IF NOT EXISTS idx_tag_colors_tag ON tag_colors(tag);
   `)
 
-  // Добавляем базовые категории если их нет
+  // Добавляем базовые категории и предустановленные цвета тегов если их нет
   await insertDefaultCategories(db)
+  await insertDefaultTagColors(db)
   
   console.log('✅ Database tables created/verified')
 }
@@ -123,6 +142,127 @@ async function insertDefaultCategories(db) {
   }
 
   console.log('✅ Default categories initialized')
+}
+
+async function insertDefaultTagColors(db) {
+  const defaultTagColors = [
+    {
+      tag: 'франция',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-r',
+      gradient_colors: JSON.stringify(['rgba(70, 130, 180, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(220, 20, 60, 0.7) 66%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'париж',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-r',
+      gradient_colors: JSON.stringify(['rgba(70, 130, 180, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(220, 20, 60, 0.7) 66%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'польша',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-b',
+      gradient_colors: JSON.stringify(['rgba(255, 255, 255, 0.7) 50%', 'rgba(220, 20, 60, 0.7) 50%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'таиланд',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-b',
+      gradient_colors: JSON.stringify(['rgba(220, 20, 60, 0.7) 16.67%', 'rgba(255, 255, 255, 0.7) 16.67%', 'rgba(255, 255, 255, 0.7) 33.33%', 'rgba(30, 60, 180, 0.7) 33.33%', 'rgba(30, 60, 180, 0.7) 66.67%', 'rgba(255, 255, 255, 0.7) 66.67%', 'rgba(255, 255, 255, 0.7) 83.33%', 'rgba(220, 20, 60, 0.7) 83.33%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'испания',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-b',
+      gradient_colors: JSON.stringify(['rgba(200, 20, 20, 0.7) 25%', 'rgba(255, 215, 0, 0.7) 25%', 'rgba(255, 215, 0, 0.7) 75%', 'rgba(200, 20, 20, 0.7) 75%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'австрия',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-b',
+      gradient_colors: JSON.stringify(['rgba(200, 20, 20, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(200, 20, 20, 0.7) 66%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'грузия',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-r',
+      gradient_colors: JSON.stringify(['rgba(255, 255, 255, 0.7) 50%', 'rgba(220, 20, 60, 0.7) 50%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'оаэ',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-r',
+      gradient_colors: JSON.stringify(['rgba(34, 139, 34, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(0, 0, 0, 0.7) 66%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'дубай',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-r',
+      gradient_colors: JSON.stringify(['rgba(34, 139, 34, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(0, 0, 0, 0.7) 66%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    },
+    {
+      tag: 'португалия',
+      color_type: 'gradient',
+      gradient_type: 'linear-to-r',
+      gradient_colors: JSON.stringify(['rgba(34, 139, 34, 0.7) 50%', 'rgba(220, 20, 60, 0.7) 50%']),
+      background_transparency: 70,
+      text_color: '#ffffff',
+      text_shadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
+    }
+  ]
+
+  for (const tagColor of defaultTagColors) {
+    try {
+      await db.run(`
+        INSERT OR IGNORE INTO tag_colors (
+          tag, color_type, gradient_type, gradient_colors, 
+          background_transparency, text_color, text_shadow
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        tagColor.tag,
+        tagColor.color_type,
+        tagColor.gradient_type,
+        tagColor.gradient_colors,
+        tagColor.background_transparency,
+        tagColor.text_color,
+        tagColor.text_shadow
+      ])
+    } catch (error) {
+      // Игнорируем ошибки дубликатов
+      if (!error.message.includes('UNIQUE constraint failed')) {
+        console.error('Error inserting default tag color:', error)
+      }
+    }
+  }
+
+  console.log('✅ Default tag colors initialized')
 }
 
 // Миграция данных из MongoDB (если есть существующие данные)

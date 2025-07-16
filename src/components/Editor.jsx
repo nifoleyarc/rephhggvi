@@ -119,17 +119,58 @@ const ThumbnailImage = ({ thumbnail }) => {
   )
 }
 
-// Функция для получения цвета тега - теперь использует новую систему
-const getTagColorStyle = (tag) => {
-  const colorConfig = getTagColor(tag)
-  
-  // Если возвращается объект со стилями (градиент или RGB)
-  if (typeof colorConfig === 'object') {
-    return colorConfig
+// Функция для получения цвета тега - теперь использует новую асинхронную систему
+const getTagColorStyle = async (tag) => {
+  try {
+    const colorConfig = await getTagColor(tag)
+    
+    // Если возвращается объект со стилями (градиент или RGB)
+    if (colorConfig && typeof colorConfig === 'object') {
+      return colorConfig
+    }
+    
+    // Если цвет не настроен, возвращаем стиль по умолчанию
+    return {
+      backgroundColor: 'rgba(75, 85, 99, 0.4)',
+      color: '#E5E7EB'
+    }
+  } catch (error) {
+    console.error('Error getting tag color:', error)
+    return {
+      backgroundColor: 'rgba(75, 85, 99, 0.4)',
+      color: '#E5E7EB'
+    }
   }
-  
-  // Если возвращается строка (старый формат), возвращаем как есть
-  return {}
+}
+
+// Компонент для отображения тега с асинхронной загрузкой стиля
+const TagWithStyle = ({ tag, className = '' }) => {
+  const [tagStyle, setTagStyle] = useState({
+    backgroundColor: 'rgba(75, 85, 99, 0.4)',
+    color: '#E5E7EB'
+  })
+
+  useEffect(() => {
+    const loadTagStyle = async () => {
+      try {
+        const style = await getTagColorStyle(tag)
+        setTagStyle(style)
+      } catch (error) {
+        console.error('Error loading tag style:', error)
+      }
+    }
+
+    loadTagStyle()
+  }, [tag])
+
+  return (
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium ${className}`}
+      style={tagStyle}
+    >
+      {tag}
+    </span>
+  )
 }
 
 // Форма добавления нового стрима
@@ -565,22 +606,12 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
 
         {stream.tags && stream.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {stream.tags.map((tag, index) => {
-              const tagStyle = getTagColorStyle(tag)
-              const colorConfig = getTagColor(tag)
-              
-              return (
-                <span
-                  key={index}
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    typeof colorConfig === 'string' ? colorConfig : ''
-                  }`}
-                  style={typeof colorConfig === 'object' ? tagStyle : {}}
-                >
-                  {tag}
-                </span>
-              )
-            })}
+            {stream.tags.map((tag, index) => (
+              <TagWithStyle
+                key={index}
+                tag={tag}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -952,10 +983,9 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
       <AnimatePresence>
         {showTagManager && (
           <TagColorManager
+            isOpen={showTagManager}
             streams={streams}
             onClose={() => setShowTagManager(false)}
-            showToast={showToast}
-            hapticFeedback={hapticFeedback}
           />
         )}
       </AnimatePresence>

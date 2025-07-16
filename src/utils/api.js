@@ -171,3 +171,105 @@ export async function safeApiCall(apiCall, fallbackData = null) {
     throw error
   }
 } 
+
+// Универсальный API клиент
+export const api = {
+  // GET запрос
+  async get(endpoint, options = {}) {
+    const url = `${API_CONFIG.baseURL}${endpoint}`
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...API_CONFIG.getDataHeaders(),
+        ...options.headers
+      },
+      ...options
+    })
+
+    if (!response.ok) {
+      throw new Error(`API GET ${endpoint} failed: ${response.status} ${response.statusText}`)
+    }
+
+    return {
+      data: await response.json(),
+      status: response.status,
+      headers: response.headers
+    }
+  },
+
+  // POST запрос
+  async post(endpoint, data = null, options = {}) {
+    const url = `${API_CONFIG.baseURL}${endpoint}`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...API_CONFIG.getAuthHeaders(),
+        ...options.headers
+      },
+      body: data ? JSON.stringify(data) : null,
+      ...options
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`API POST ${endpoint} failed: ${response.status} ${response.statusText} - ${errorText}`)
+    }
+
+    return {
+      data: await response.json(),
+      status: response.status,
+      headers: response.headers
+    }
+  },
+
+  // PUT запрос
+  async put(endpoint, data = null, options = {}) {
+    const url = `${API_CONFIG.baseURL}${endpoint}`
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...API_CONFIG.getAuthHeaders(),
+        ...options.headers
+      },
+      body: data ? JSON.stringify(data) : null,
+      ...options
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`API PUT ${endpoint} failed: ${response.status} ${response.statusText} - ${errorText}`)
+    }
+
+    return {
+      data: await response.json(),
+      status: response.status,
+      headers: response.headers
+    }
+  },
+
+  // DELETE запрос
+  async delete(endpoint, options = {}) {
+    const url = `${API_CONFIG.baseURL}${endpoint}`
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        ...API_CONFIG.getAuthHeaders(),
+        ...options.headers
+      },
+      ...options
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`API DELETE ${endpoint} failed: ${response.status} ${response.statusText} - ${errorText}`)
+    }
+
+    return {
+      data: response.status === 204 ? null : await response.json(),
+      status: response.status,
+      headers: response.headers
+    }
+  }
+} 
