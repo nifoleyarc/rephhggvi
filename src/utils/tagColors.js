@@ -1,335 +1,309 @@
-import { api } from './api.js'
+// Система управления цветами тегов
+// Поддерживает обычные цвета и градиенты
 
-// Cache для цветов тегов
-let tagColorsCache = null
-let isLoading = false
-let loadPromise = null
-
-// Предустановленные цвета флагов стран (как fallback)
-const DEFAULT_TAG_COLORS = {
-  'франция': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-r',
-    gradientColors: ['rgba(70, 130, 180, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(220, 20, 60, 0.7) 66%'],
-    backgroundTransparency: 70,
-    textColor: '#ffffff',
-    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
-  },
+// Цвета флагов стран с четкими границами (приглушенные прозрачные тона)
+const COUNTRY_FLAG_COLORS = {
   'париж': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-r',
-    gradientColors: ['rgba(70, 130, 180, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(220, 20, 60, 0.7) 66%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(30, 58, 138, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Французский флаг - прозрачные тона
+    direction: 'to right',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'польша': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-b',
-    gradientColors: ['rgba(255, 255, 255, 0.7) 50%', 'rgba(220, 20, 60, 0.7) 50%'],
-    backgroundTransparency: 70,
+    type: 'gradient', 
+    colors: ['rgba(243, 244, 246, 0.7) 50%', 'rgba(185, 28, 28, 0.7) 50%'], // Польский флаг - прозрачный
+    direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'таиланд': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-b',
-    gradientColors: ['rgba(220, 20, 60, 0.7) 16.67%', 'rgba(255, 255, 255, 0.7) 16.67%', 'rgba(255, 255, 255, 0.7) 33.33%', 'rgba(30, 60, 180, 0.7) 33.33%', 'rgba(30, 60, 180, 0.7) 66.67%', 'rgba(255, 255, 255, 0.7) 66.67%', 'rgba(255, 255, 255, 0.7) 83.33%', 'rgba(220, 20, 60, 0.7) 83.33%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(185, 28, 28, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 83.33%', 'rgba(185, 28, 28, 0.7) 83.33%'], // Тайский флаг - прозрачные тона
+    direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'испания': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-b',
-    gradientColors: ['rgba(200, 20, 20, 0.7) 25%', 'rgba(255, 215, 0, 0.7) 25%', 'rgba(255, 215, 0, 0.7) 75%', 'rgba(200, 20, 20, 0.7) 75%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(185, 28, 28, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // Испанский флаг - прозрачные тона
+    direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'австрия': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-b',
-    gradientColors: ['rgba(200, 20, 20, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(200, 20, 20, 0.7) 66%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(185, 28, 28, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Австрийский флаг - прозрачный
+    direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'грузия': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-r',
-    gradientColors: ['rgba(255, 255, 255, 0.7) 50%', 'rgba(220, 20, 60, 0.7) 50%'],
-    backgroundTransparency: 70,
-    textColor: '#ffffff',
-    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
-  },
-  'оаэ': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-r',
-    gradientColors: ['rgba(34, 139, 34, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(0, 0, 0, 0.7) 66%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(243, 244, 246, 0.7) 80%', 'rgba(185, 28, 28, 0.7) 80%'], // Грузинский флаг - прозрачный
+    direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'дубай': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-r',
-    gradientColors: ['rgba(34, 139, 34, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 33%', 'rgba(255, 255, 255, 0.7) 66%', 'rgba(0, 0, 0, 0.7) 66%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(22, 101, 52, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // ОАЭ флаг - прозрачные тона
+    direction: 'to bottom',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'португалия': {
-    colorType: 'gradient',
-    gradientType: 'linear-to-r',
-    gradientColors: ['rgba(34, 139, 34, 0.7) 50%', 'rgba(220, 20, 60, 0.7) 50%'],
-    backgroundTransparency: 70,
+    type: 'gradient',
+    colors: ['rgba(22, 101, 52, 0.7) 40%', 'rgba(185, 28, 28, 0.7) 40%'], // Португальский флаг - прозрачные тона
+    direction: 'to right',
+    backgroundTransparency: '70',
     textColor: '#ffffff',
     textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   }
 }
 
-// Загрузка цветов тегов с сервера
-export async function loadTagColors() {
-  if (tagColorsCache) {
-    return tagColorsCache
+// Стандартные цвета для существующих тегов
+const DEFAULT_TAG_COLORS = {
+  'ирл': {
+    type: 'solid',
+    colors: ['#3B82F6'], // blue-500
+    backgroundTransparency: '40',
+    textColor: '#93C5FD' // blue-200
+  },
+  'фильм': {
+    type: 'solid',
+    colors: ['#8B5CF6'], // purple-500
+    backgroundTransparency: '40',
+    textColor: '#C4B5FD' // purple-200
+  },
+  'just_chatting': {
+    type: 'solid',
+    colors: ['#3B82F6'], // blue-500
+    backgroundTransparency: '40',
+    textColor: '#93C5FD' // blue-200
+  },
+  'игры': {
+    type: 'solid',
+    colors: ['#EF4444'], // red-500
+    backgroundTransparency: '40',
+    textColor: '#FCA5A5' // red-200
+  },
+  'контент': {
+    type: 'solid',
+    colors: ['#059669'], // green-600
+    backgroundTransparency: '40',
+    textColor: '#86EFAC' // green-200
+  },
+  'шоу': {
+    type: 'solid',
+    colors: ['#8B5CF6'], // purple-500
+    backgroundTransparency: '40',
+    textColor: '#C4B5FD' // purple-200
+  },
+  'кукинг': {
+    type: 'solid',
+    colors: ['#10B981'], // emerald-500
+    backgroundTransparency: '40',
+    textColor: '#6EE7B7' // emerald-200
+  },
+  'марафон': {
+    type: 'solid',
+    colors: ['#F59E0B'], // amber-500
+    backgroundTransparency: '40',
+    textColor: '#FCD34D' // amber-200
   }
+}
 
-  if (isLoading) {
-    return loadPromise
-  }
+// Ключ для localStorage
+const STORAGE_KEY = 'tagColors'
 
-  isLoading = true
-  loadPromise = (async () => {
-    try {
-      const response = await api.get('/tag-colors')
-      tagColorsCache = response.data || {}
-      
-      // Если база данных пуста, пробуем мигрировать из localStorage
-      if (Object.keys(tagColorsCache).length === 0) {
-        await migrateFromLocalStorage()
-      }
-      
-      console.log('✓ Tag colors loaded from server:', Object.keys(tagColorsCache).length, 'tags')
-      return tagColorsCache
-    } catch (error) {
-      console.error('Failed to load tag colors from server:', error)
-      
-      // Fallback: пробуем загрузить из localStorage
-      const localData = getTagColorsFromLocalStorage()
-      if (Object.keys(localData).length > 0) {
-        console.log('Using localStorage as fallback')
-        tagColorsCache = localData
-        
-        // Пробуем мигрировать в базу данных в фоне
-        migrateFromLocalStorage().catch(err => {
-          console.error('Background migration failed:', err)
-        })
-      } else {
-        // Используем предустановленные цвета
-        tagColorsCache = { ...DEFAULT_TAG_COLORS }
-        console.log('Using default tag colors as fallback')
-      }
-      
-      return tagColorsCache
-    } finally {
-      isLoading = false
+// Получить цвета тегов из localStorage или вернуть дефолтные
+export const getTagColors = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      // Объединяем с дефолтными цветами, приоритет у сохраненных
+      return { ...DEFAULT_TAG_COLORS, ...COUNTRY_FLAG_COLORS, ...parsed }
     }
-  })()
-
-  return loadPromise
-}
-
-// Сохранение цветов тегов на сервер
-export async function saveTagColors(tagColors) {
-  try {
-    const response = await api.put('/tag-colors', tagColors)
-    
-    // Обновляем кэш
-    tagColorsCache = { ...tagColors }
-    
-    console.log('✓ Tag colors saved to server:', Object.keys(tagColors).length, 'tags')
-    return response.data
   } catch (error) {
-    console.error('Failed to save tag colors to server:', error)
-    
-    // Fallback: сохраняем в localStorage
-    saveTagColorsToLocalStorage(tagColors)
-    tagColorsCache = { ...tagColors }
-    
-    throw new Error('Не удалось сохранить на сервере, данные сохранены локально')
+    console.warn('Error loading tag colors from localStorage:', error)
   }
+  
+  // Возвращаем объединенные дефолтные цвета
+  return { ...DEFAULT_TAG_COLORS, ...COUNTRY_FLAG_COLORS }
 }
 
-// Миграция данных из localStorage в базу данных
-async function migrateFromLocalStorage() {
+// Сохранить цвета тегов в localStorage
+export const saveTagColors = (tagColors) => {
   try {
-    const localData = getTagColorsFromLocalStorage()
-    
-    if (Object.keys(localData).length === 0) {
-      console.log('No localStorage data to migrate')
-      return
-    }
-
-    const response = await api.post('/tag-colors/migrate', localData)
-    console.log('✓ Successfully migrated', Object.keys(localData).length, 'tags from localStorage to database')
-    
-    // Обновляем кэш с мигрированными данными
-    tagColorsCache = { ...localData }
-    
-    // Очищаем localStorage после успешной миграции
-    localStorage.removeItem('tagColors')
-    console.log('✓ localStorage cleared after successful migration')
-    
-    return response.data
-  } catch (error) {
-    if (error.response?.status === 409) {
-      console.log('Migration skipped: data already exists in database')
-    } else {
-      console.error('Migration failed:', error)
-    }
-  }
-}
-
-// Получение цветов тегов из localStorage (fallback)
-function getTagColorsFromLocalStorage() {
-  try {
-    const stored = localStorage.getItem('tagColors')
-    return stored ? JSON.parse(stored) : {}
-  } catch (error) {
-    console.error('Error reading tag colors from localStorage:', error)
-    return {}
-  }
-}
-
-// Сохранение цветов тегов в localStorage (fallback)
-function saveTagColorsToLocalStorage(tagColors) {
-  try {
-    localStorage.setItem('tagColors', JSON.stringify(tagColors))
-    console.log('✓ Tag colors saved to localStorage as fallback')
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tagColors))
   } catch (error) {
     console.error('Error saving tag colors to localStorage:', error)
   }
 }
 
-// Получение цвета для конкретного тега
-export async function getTagColor(tag) {
-  const tagColors = await loadTagColors()
+// Получить цвет конкретного тега
+export const getTagColor = (tag) => {
+  const tagColors = getTagColors()
+  const normalizedTag = tag.toLowerCase().replace('#', '')
+  const colorConfig = tagColors[normalizedTag]
+  
+  if (!colorConfig) {
+    // Дефолтный цвет для неизвестных тегов
+    return 'bg-gray-500/40 text-gray-200'
+  }
+  
+  if (colorConfig.type === 'gradient') {
+    // Создаем CSS-класс для градиента с четкими границами
+    let gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.join(', ')})`
+    
+    // Применяем прозрачность фона к градиенту если указана
+    if (colorConfig.backgroundTransparency && colorConfig.backgroundTransparency !== '100') {
+      const transparency = colorConfig.backgroundTransparency / 100
+      gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.map(color => {
+        // Если цвет уже содержит rgba, меняем прозрачность
+        if (color.includes('rgba')) {
+          return color.replace(/rgba\(([^)]+)\)/g, (match, content) => {
+            const parts = content.split(',')
+            if (parts.length >= 4) {
+              // Заменяем последний параметр (прозрачность)
+              parts[3] = ` ${transparency}`
+              return `rgba(${parts.join(',')})`
+            }
+            return match
+          })
+        }
+        // Если цвет в формате hex, конвертируем в rgba
+        if (color.startsWith('#')) {
+          const hex = color.replace('#', '')
+          const r = parseInt(hex.substr(0, 2), 16)
+          const g = parseInt(hex.substr(2, 2), 16)
+          const b = parseInt(hex.substr(4, 2), 16)
+          return `rgba(${r}, ${g}, ${b}, ${transparency})`
+        }
+        return color
+      }).join(', ')})`
+    }
+    
+    const style = {
+      background: gradient,
+      color: colorConfig.textColor || '#FFFFFF',
+      backgroundClip: 'padding-box'
+    }
+    
+    // Добавляем textShadow если есть
+    if (colorConfig.textShadow) {
+      style.textShadow = colorConfig.textShadow
+    }
+    
+    return style
+  } else {
+    // Обычный цвет
+    const bgColor = colorConfig.colors[0]
+    const backgroundTransparency = colorConfig.backgroundTransparency || '40'
+    const textColor = colorConfig.textColor || '#E5E7EB'
+    
+    // Конвертируем hex в rgb для прозрачности фона
+    const hexToRgb = (hex) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null
+    }
+    
+    const rgb = hexToRgb(bgColor)
+    if (rgb) {
+      const style = {
+        backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${backgroundTransparency})`,
+        color: textColor
+      }
+      
+      // Добавляем textShadow если есть
+      if (colorConfig.textShadow) {
+        style.textShadow = colorConfig.textShadow
+      }
+      
+      return style
+    }
+    
+    return 'bg-gray-500/40 text-gray-200'
+  }
+}
+
+// Установить цвет для тега
+export const setTagColor = (tag, colorConfig) => {
+  const tagColors = getTagColors()
   const normalizedTag = tag.toLowerCase().replace('#', '')
   
-  const config = tagColors[normalizedTag]
-  if (!config) {
-    // Возвращаем стили по умолчанию если конфигурация не найдена
-    return {
-      backgroundColor: 'rgba(75, 85, 99, 0.4)',
-      color: '#E5E7EB'
+  tagColors[normalizedTag] = colorConfig
+  saveTagColors(tagColors)
+}
+
+// Удалить настройку цвета для тега (вернется к дефолтному)
+export const removeTagColor = (tag) => {
+  const tagColors = getTagColors()
+  const normalizedTag = tag.toLowerCase().replace('#', '')
+  
+  delete tagColors[normalizedTag]
+  saveTagColors(tagColors)
+}
+
+// Получить все уникальные теги из стримов
+export const extractAllTags = (streams) => {
+  const allTags = new Set()
+  
+  streams.forEach(stream => {
+    if (stream.tags && Array.isArray(stream.tags)) {
+      stream.tags.forEach(tag => {
+        const normalized = tag.toLowerCase().replace('#', '')
+        allTags.add(normalized)
+      })
     }
-  }
-
-  return generateTagStyle(config)
+  })
+  
+  return Array.from(allTags).sort()
 }
 
-// Получение всех цветов тегов
-export async function getAllTagColors() {
-  return await loadTagColors()
-}
-
-// Установка цвета для тега
-export async function setTagColor(tag, colorConfig) {
-  const tagColors = await loadTagColors()
-  const normalizedTag = tag.toLowerCase()
-  
-  tagColors[normalizedTag] = { ...colorConfig }
-  await saveTagColors(tagColors)
-  
-  return tagColors
-}
-
-// Удаление цвета тега
-export async function removeTagColor(tag) {
-  const tagColors = await loadTagColors()
-  const normalizedTag = tag.toLowerCase()
-  
-  if (tagColors[normalizedTag]) {
-    delete tagColors[normalizedTag]
-    await saveTagColors(tagColors)
-  }
-  
-  return tagColors
-}
-
-// Генерация CSS стилей на основе конфигурации
-function generateTagStyle(config) {
-  let backgroundStyle = ''
-  let textColor = config.textColor || '#ffffff'
-  let textShadow = config.textShadow || ''
-  
-  if (config.colorType === 'gradient' && config.gradientColors && config.gradientColors.length > 0) {
-    const gradientDirection = getGradientDirection(config.gradientType)
-    backgroundStyle = `linear-gradient(${gradientDirection}, ${config.gradientColors.join(', ')})`
-  } else if (config.solidColor) {
-    // Применяем прозрачность к solid цвету
-    const transparency = (config.backgroundTransparency || 100) / 100
-    const color = hexToRgba(config.solidColor, transparency)
-    backgroundStyle = color
-  }
-
-  return {
-    background: backgroundStyle,
-    color: textColor,
-    textShadow: textShadow,
-    backgroundTransparency: config.backgroundTransparency || 100
+// Сбросить все цвета к дефолтным
+export const resetTagColors = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (error) {
+    console.error('Error resetting tag colors:', error)
   }
 }
 
-// Конвертация направления градиента
-function getGradientDirection(gradientType) {
-  const directions = {
-    'linear-to-r': 'to right',
-    'linear-to-l': 'to left',
-    'linear-to-t': 'to top',
-    'linear-to-b': 'to bottom',
-    'linear-to-tr': 'to top right',
-    'linear-to-tl': 'to top left',
-    'linear-to-br': 'to bottom right',
-    'linear-to-bl': 'to bottom left'
-  }
-  return directions[gradientType] || 'to right'
-}
-
-// Конвертация hex в rgba
-function hexToRgba(hex, alpha = 1) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-// Экспорт конфигурации тегов
-export async function exportTagColors() {
-  const tagColors = await loadTagColors()
+// Экспортировать настройки цветов
+export const exportTagColors = () => {
+  const tagColors = getTagColors()
   const dataStr = JSON.stringify(tagColors, null, 2)
   const dataBlob = new Blob([dataStr], { type: 'application/json' })
-  const url = URL.createObjectURL(dataBlob)
   
   const link = document.createElement('a')
-  link.href = url
-  link.download = 'tag-colors-config.json'
-  document.body.appendChild(link)
+  link.href = URL.createObjectURL(dataBlob)
+  link.download = 'tag-colors.json'
   link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }
 
-// Импорт конфигурации тегов
-export async function importTagColors(file) {
+// Импортировать настройки цветов
+export const importTagColors = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
-        const importedColors = JSON.parse(e.target.result)
-        await saveTagColors(importedColors)
-        resolve(importedColors)
+        const tagColors = JSON.parse(e.target.result)
+        saveTagColors(tagColors)
+        resolve(tagColors)
       } catch (error) {
         reject(new Error('Неверный формат файла'))
       }
@@ -337,9 +311,4 @@ export async function importTagColors(file) {
     reader.onerror = () => reject(new Error('Ошибка чтения файла'))
     reader.readAsText(file)
   })
-}
-
-// Сброс кэша (полезно при обновлении данных)
-export function clearTagColorsCache() {
-  tagColorsCache = null
 } 
