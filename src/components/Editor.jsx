@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff, Search, Tag, User, Link, Hash, Clock, FileText, Settings, RotateCcw, Loader2 } from 'lucide-react'
+import { X, Plus, Edit, Trash2, Save, Eye, EyeOff, ArrowLeft, RefreshCw, Calendar, Play, ImageIcon, ImageOff, Search, Tag, User, Link, Hash, Clock, FileText, Settings, RotateCcw, Loader2, Palette } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useTelegram } from '../hooks/useTelegram'
 import { useStreams } from '../hooks/useStreams'
 import { API_CONFIG } from '../utils/api'
 import axios from 'axios'
+import TagColorManager from './TagColorManager'
+import { getTagColor } from '../utils/tagColors'
 
 // Утилита для безопасной обработки дат
 const formatDateSafely = (dateString, formatStr, options = {}) => {
@@ -117,29 +119,17 @@ const ThumbnailImage = ({ thumbnail }) => {
   )
 }
 
-// Функция для получения цвета тега
-const getTagColor = (tag) => {
-  const tagLower = tag.toLowerCase().replace('#', '')
-  switch (tagLower) {
-    case 'ирл':
-      return 'bg-blue-500/40 text-blue-200'
-    case 'фильм':
-      return 'bg-purple-500/40 text-purple-200'
-    case 'just_chatting':
-      return 'bg-blue-500/40 text-blue-200'
-    case 'игры':
-      return 'bg-red-500/40 text-red-200'
-    case 'контент':
-      return 'bg-green-600/40 text-green-200'
-    case 'шоу':
-      return 'bg-purple-500/40 text-purple-200'
-    case 'кукинг':
-      return 'bg-emerald-500/40 text-emerald-200'
-    case 'марафон':
-      return 'bg-amber-500/40 text-amber-200'
-    default:
-      return 'bg-gray-500/40 text-gray-200'
+// Функция для получения цвета тега - теперь использует новую систему
+const getTagColorStyle = (tag) => {
+  const colorConfig = getTagColor(tag)
+  
+  // Если возвращается объект со стилями (градиент или RGB)
+  if (typeof colorConfig === 'object') {
+    return colorConfig
   }
+  
+  // Если возвращается строка (старый формат), возвращаем как есть
+  return {}
 }
 
 // Форма добавления нового стрима
@@ -575,14 +565,22 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
 
         {stream.tags && stream.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {stream.tags.map((tag, index) => (
-              <span
-                key={index}
-                className={`px-2 py-1 rounded-full text-xs font-medium ${getTagColor(tag)}`}
-              >
-                {tag}
-              </span>
-            ))}
+            {stream.tags.map((tag, index) => {
+              const tagStyle = getTagColorStyle(tag)
+              const colorConfig = getTagColor(tag)
+              
+              return (
+                <span
+                  key={index}
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    typeof colorConfig === 'string' ? colorConfig : ''
+                  }`}
+                  style={typeof colorConfig === 'object' ? tagStyle : {}}
+                >
+                  {tag}
+                </span>
+              )
+            })}
           </div>
         )}
       </div>
@@ -600,6 +598,7 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [isBanned, setIsBanned] = useState(false)
   const [banTimeRemaining, setBanTimeRemaining] = useState(0)
+  const [showTagManager, setShowTagManager] = useState(false)
   
   const { tg, hapticFeedback, initData } = useTelegram()
   const { 
@@ -869,12 +868,22 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
         {/* Заголовок */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <h2 className="text-xl font-bold text-white">Редактор стримов</h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTagManager(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+              title="Управление цветами тегов"
+            >
+              <Palette size={16} />
+              Теги
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Контент */}
@@ -938,6 +947,18 @@ const Editor = ({ onClose, showToast, onDataUpdate }) => {
           )}
         </div>
       </motion.div>
+      
+      {/* Менеджер цветов тегов */}
+      <AnimatePresence>
+        {showTagManager && (
+          <TagColorManager
+            streams={streams}
+            onClose={() => setShowTagManager(false)}
+            showToast={showToast}
+            hapticFeedback={hapticFeedback}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

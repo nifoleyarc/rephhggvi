@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { Play, Calendar, Tag, Search, X } from 'lucide-react'
 import { useTelegram } from '../hooks/useTelegram'
+import { getTagColor } from '../utils/tagColors'
 
 // Утилита для безопасной обработки дат
 const formatDateSafely = (dateString, formatStr, options = {}) => {
@@ -77,29 +78,17 @@ const ThumbnailImage = ({ thumbnail }) => {
   )
 }
 
-// Функция для получения цвета тега
-const getTagColor = (tag) => {
-  const tagLower = tag.toLowerCase().replace('#', '')
-  switch (tagLower) {
-    case 'ирл':
-      return 'bg-blue-500/40 text-blue-200'
-    case 'фильм':
-      return 'bg-purple-500/40 text-purple-200'
-    case 'just_chatting':
-      return 'bg-blue-500/40 text-blue-200'
-    case 'игры':
-      return 'bg-red-500/40 text-red-200'
-    case 'контент':
-      return 'bg-green-600/40 text-green-200'
-    case 'шоу':
-      return 'bg-purple-500/40 text-purple-200'
-    case 'кукинг':
-      return 'bg-emerald-500/40 text-emerald-200'
-    case 'марафон':
-      return 'bg-amber-500/40 text-amber-200'
-    default:
-      return 'bg-gray-500/40 text-gray-200'
+// Функция для получения стиля тега - теперь использует новую систему
+const getTagStyle = (tag) => {
+  const colorConfig = getTagColor(tag)
+  
+  // Если возвращается объект со стилями (градиент или RGB)
+  if (typeof colorConfig === 'object') {
+    return colorConfig
   }
+  
+  // Если возвращается строка (старый формат), возвращаем пустой объект
+  return {}
 }
 
 // Функция для получения цвета активной категории
@@ -658,14 +647,22 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                   <div className="flex items-center gap-1 text-sm">
                     <Tag size={14} />
                     <div className="flex gap-1 overflow-hidden">
-                      {stream.tags.slice(0, 3).map((tag, tagIndex) => (
-                        <span
-                          key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                        >
-                          {tag.replace('#', '')}
-                        </span>
-                      ))}
+                      {stream.tags.slice(0, 3).map((tag, tagIndex) => {
+                        const tagStyle = getTagStyle(tag)
+                        const colorConfig = getTagColor(tag)
+                        
+                        return (
+                          <span
+                            key={tagIndex}
+                            className={`px-2 py-1 rounded text-sm font-roobert-regular ${
+                              typeof colorConfig === 'string' ? colorConfig : ''
+                            }`}
+                            style={typeof colorConfig === 'object' ? tagStyle : {}}
+                          >
+                            {tag.replace('#', '')}
+                          </span>
+                        )
+                      })}
                       {stream.tags.length > 3 && (
                         <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
                       )}
@@ -860,14 +857,22 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                   <div className="flex items-center gap-1 text-sm">
                     <Tag size={14} />
                     <div className="flex gap-1 overflow-hidden">
-                      {stream.tags.slice(0, 3).map((tag, tagIndex) => (
-                        <span
-                          key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                        >
-                          {tag.replace('#', '')}
-                        </span>
-                      ))}
+                      {stream.tags.slice(0, 3).map((tag, tagIndex) => {
+                        const tagStyle = getTagStyle(tag)
+                        const colorConfig = getTagColor(tag)
+                        
+                        return (
+                          <span
+                            key={tagIndex}
+                            className={`px-2 py-1 rounded text-sm font-roobert-regular ${
+                              typeof colorConfig === 'string' ? colorConfig : ''
+                            }`}
+                            style={typeof colorConfig === 'object' ? tagStyle : {}}
+                          >
+                            {tag.replace('#', '')}
+                          </span>
+                        )
+                      })}
                       {stream.tags.length > 3 && (
                         <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
                       )}
