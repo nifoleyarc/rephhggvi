@@ -7,57 +7,57 @@ const COUNTRY_FLAG_COLORS = {
     type: 'gradient',
     colors: ['rgba(30, 58, 138, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Французский флаг - прозрачные тона
     direction: 'to right',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'польша': {
     type: 'gradient', 
     colors: ['rgba(243, 244, 246, 0.7) 50%', 'rgba(185, 28, 28, 0.7) 50%'], // Польский флаг - прозрачный
     direction: 'to bottom',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'таиланд': {
     type: 'gradient',
     colors: ['rgba(185, 28, 28, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 83.33%', 'rgba(185, 28, 28, 0.7) 83.33%'], // Тайский флаг - прозрачные тона
     direction: 'to bottom',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'испания': {
     type: 'gradient',
     colors: ['rgba(185, 28, 28, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // Испанский флаг - прозрачные тона
     direction: 'to bottom',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'австрия': {
     type: 'gradient',
     colors: ['rgba(185, 28, 28, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Австрийский флаг - прозрачный
     direction: 'to bottom',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'грузия': {
     type: 'gradient',
     colors: ['rgba(243, 244, 246, 0.7) 80%', 'rgba(185, 28, 28, 0.7) 80%'], // Грузинский флаг - прозрачный
     direction: 'to bottom',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'дубай': {
     type: 'gradient',
     colors: ['rgba(22, 101, 52, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // ОАЭ флаг - прозрачные тона
     direction: 'to bottom',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   },
   'португалия': {
     type: 'gradient',
     colors: ['rgba(22, 101, 52, 0.7) 40%', 'rgba(185, 28, 28, 0.7) 40%'], // Португальский флаг - прозрачные тона
     direction: 'to right',
-    textColor: '#000000',
-    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
+    textColor: '#ffffff',
+    textShadow: '0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.8)'
   }
 }
 
