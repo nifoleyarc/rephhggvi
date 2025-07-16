@@ -146,42 +146,6 @@ export const DEMO_DATA = {
         url: 'https://via.placeholder.com/320x180/1a1a1a/ffffff?text=Demo+Stream+2',
         source: 'demo'
       }
-    },
-    {
-      _id: 'demo-3',
-      title: 'Путешествие по Грузии - Тбилиси',
-      date: '2024-01-25T16:00:00.000Z',
-      categories: ['ирл'],
-      tags: ['#грузия', '#путешествие', '#ирл'],
-      telegramUrl: 'https://t.me/demo/3',
-      thumbnail: {
-        url: 'https://via.placeholder.com/320x180/1a1a1a/ffffff?text=Georgia+Stream',
-        source: 'demo'
-      }
-    },
-    {
-      _id: 'demo-4',
-      title: 'Стрим из Парижа - Эйфелева башня',
-      date: '2024-01-28T14:00:00.000Z',
-      categories: ['ирл'],
-      tags: ['#париж', '#франция', '#путешествие'],
-      telegramUrl: 'https://t.me/demo/4',
-      thumbnail: {
-        url: 'https://via.placeholder.com/320x180/1a1a1a/ffffff?text=Paris+Stream',
-        source: 'demo'
-      }
-    },
-    {
-      _id: 'demo-5',
-      title: 'Готовим в Таиланде - уличная еда',
-      date: '2024-01-30T12:00:00.000Z',
-      categories: ['кукинг'],
-      tags: ['#таиланд', '#кукинг', '#путешествие'],
-      telegramUrl: 'https://t.me/demo/5',
-      thumbnail: {
-        url: 'https://via.placeholder.com/320x180/1a1a1a/ffffff?text=Thailand+Cooking',
-        source: 'demo'
-      }
     }
   ],
   categories: [

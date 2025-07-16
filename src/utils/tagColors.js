@@ -1,47 +1,55 @@
 // Система управления цветами тегов
 // Поддерживает обычные цвета и градиенты
 
-// Цвета флагов стран
+// Цвета флагов стран с четкими границами (приглушенные тона)
 const COUNTRY_FLAG_COLORS = {
   'париж': {
     type: 'gradient',
-    colors: ['#002395', '#FFFFFF', '#ED2939'], // Французский флаг
-    direction: 'to right'
+    colors: ['#1e3a8a 33%', '#f3f4f6 33%', '#f3f4f6 66%', '#b91c1c 66%'], // Французский флаг - приглушенные тона
+    direction: 'to right',
+    textColor: '#000000'
   },
   'польша': {
     type: 'gradient', 
-    colors: ['#FFFFFF', '#DC143C'], // Польский флаг
-    direction: 'to bottom'
+    colors: ['#f3f4f6 50%', '#b91c1c 50%'], // Польский флаг - приглушенный красный
+    direction: 'to bottom',
+    textColor: '#000000'
   },
   'таиланд': {
     type: 'gradient',
-    colors: ['#ED1C24', '#FFFFFF', '#241F7F', '#FFFFFF', '#ED1C24'], // Тайский флаг
-    direction: 'to bottom'
+    colors: ['#b91c1c 16.66%', '#f3f4f6 16.66%', '#f3f4f6 33.33%', '#1e3a8a 33.33%', '#1e3a8a 66.66%', '#f3f4f6 66.66%', '#f3f4f6 83.33%', '#b91c1c 83.33%'], // Тайский флаг - приглушенные тона
+    direction: 'to bottom',
+    textColor: '#000000'
   },
   'испания': {
     type: 'gradient',
-    colors: ['#AA151B', '#F1BF00', '#AA151B'], // Испанский флаг
-    direction: 'to bottom'
+    colors: ['#b91c1c 25%', '#fbbf24 25%', '#fbbf24 75%', '#b91c1c 75%'], // Испанский флаг - приглушенные красный и желтый
+    direction: 'to bottom',
+    textColor: '#000000'
   },
   'австрия': {
     type: 'gradient',
-    colors: ['#ED2939', '#FFFFFF', '#ED2939'], // Австрийский флаг
-    direction: 'to bottom'
+    colors: ['#b91c1c 33%', '#f3f4f6 33%', '#f3f4f6 66%', '#b91c1c 66%'], // Австрийский флаг - приглушенный красный
+    direction: 'to bottom',
+    textColor: '#000000'
   },
   'грузия': {
     type: 'gradient',
-    colors: ['#FFFFFF', '#FF0000'], // Грузинский флаг (упрощенно)
-    direction: 'to right'
+    colors: ['#f3f4f6 80%', '#b91c1c 80%'], // Грузинский флаг - приглушенный красный
+    direction: 'to bottom',
+    textColor: '#000000'
   },
   'дубай': {
     type: 'gradient',
-    colors: ['#00732F', '#FFFFFF', '#000000', '#FF0000'], // ОАЭ флаг
-    direction: 'to bottom'
+    colors: ['#166534 25%', '#f3f4f6 25%', '#f3f4f6 50%', '#1f2937 50%', '#1f2937 75%', '#b91c1c 75%'], // ОАЭ флаг - приглушенные тона
+    direction: 'to bottom',
+    textColor: '#000000'
   },
   'португалия': {
     type: 'gradient',
-    colors: ['#046A38', '#FF0000'], // Португальский флаг
-    direction: 'to right'
+    colors: ['#166534 40%', '#b91c1c 40%'], // Португальский флаг - приглушенные зеленый и красный
+    direction: 'to right',
+    textColor: '#000000'
   }
 }
 
@@ -138,7 +146,7 @@ export const getTagColor = (tag) => {
   }
   
   if (colorConfig.type === 'gradient') {
-    // Создаем CSS-класс для градиента
+    // Создаем CSS-класс для градиента с четкими границами
     const gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.join(', ')})`
     return {
       background: gradient,
