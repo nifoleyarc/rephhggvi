@@ -32,6 +32,7 @@ const GradientColorPicker = ({
   const [colors, setColors] = useState(value?.colors || ['#3B82F6'])
   const [direction, setDirection] = useState(value?.direction || 'to right')
   const [bgOpacity, setBgOpacity] = useState(value?.bgOpacity || '40')
+  const [opacity, setOpacity] = useState(value?.opacity || '100')
   const [textColor, setTextColor] = useState(value?.textColor || '#FFFFFF')
   const [textShadow, setTextShadow] = useState(value?.textShadow || '')
 
@@ -42,18 +43,20 @@ const GradientColorPicker = ({
       setColors(value.colors || ['#3B82F6'])
       setDirection(value.direction || 'to right')
       setBgOpacity(value.bgOpacity || '40')
+      setOpacity(value.opacity || '100')
       setTextColor(value.textColor || '#FFFFFF')
       setTextShadow(value.textShadow || '')
     }
   }, [value])
 
-  // Вызываем onChange при любом изменении
-  useEffect(() => {
+  // Уведомляем о изменениях (но не автоматически сохраняем)
+  const notifyChange = () => {
     const newValue = {
       type: colorType,
       colors: colors,
       direction: direction,
       bgOpacity: bgOpacity,
+      opacity: opacity,
       textColor: textColor
     }
     
@@ -63,7 +66,12 @@ const GradientColorPicker = ({
     }
     
     onChange(newValue)
-  }, [colorType, colors, direction, bgOpacity, textColor, textShadow, onChange])
+  }
+
+  // Вызываем notifyChange при любом изменении
+  useEffect(() => {
+    notifyChange()
+  }, [colorType, colors, direction, bgOpacity, opacity, textColor, textShadow])
 
   const addColor = () => {
     if (colors.length < 5) {
@@ -90,6 +98,11 @@ const GradientColorPicker = ({
         color: textColor
       }
       
+      // Добавляем общую прозрачность
+      if (opacity && opacity !== '100') {
+        style.opacity = opacity / 100
+      }
+      
       // Добавляем textShadow если есть
       if (textShadow) {
         style.textShadow = textShadow
@@ -112,6 +125,11 @@ const GradientColorPicker = ({
         const style = {
           backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${bgOpacity})`,
           color: textColor
+        }
+        
+        // Добавляем общую прозрачность
+        if (opacity && opacity !== '100') {
+          style.opacity = opacity / 100
         }
         
         // Добавляем textShadow если есть
@@ -308,6 +326,25 @@ const GradientColorPicker = ({
                   />
                 </div>
               )}
+
+              {/* Общая прозрачность тега */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Общая прозрачность тега: {opacity}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="10"
+                  value={opacity}
+                  onChange={(e) => setOpacity(e.target.value)}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Влияет на весь тег целиком (цвет + текст)
+                </p>
+              </div>
 
               {/* Цвет текста */}
               <div>

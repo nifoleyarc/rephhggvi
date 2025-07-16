@@ -21,6 +21,8 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
   const [tagColors, setTagColorsState] = useState({})
   const [showPreview, setShowPreview] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
+  // Добавляем временное состояние для изменений
+  const [tempColorConfig, setTempColorConfig] = useState(null)
 
   // Загружаем цвета тегов при монтировании
   useEffect(() => {
@@ -49,7 +51,9 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
 
   // Получение стиля тега для превью
   const getTagStyle = (tag) => {
-    const config = tagColors[tag]
+    // Используем временную конфигурацию если редактируется этот тег
+    const config = editingTag === tag ? tempColorConfig : tagColors[tag]
+    
     if (!config) {
       return {
         backgroundColor: 'rgba(107, 114, 128, 0.4)', // gray-500/40
@@ -58,10 +62,22 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
     }
 
     if (config.type === 'gradient') {
-      return {
+      const style = {
         background: `linear-gradient(${config.direction || 'to right'}, ${config.colors.join(', ')})`,
         color: config.textColor || '#FFFFFF'
       }
+      
+      // Добавляем прозрачность для градиента если указана
+      if (config.opacity && config.opacity !== '100') {
+        style.opacity = config.opacity / 100
+      }
+      
+      // Добавляем textShadow если есть
+      if (config.textShadow) {
+        style.textShadow = config.textShadow
+      }
+      
+      return style
     } else {
       const color = config.colors[0]
       const hexToRgb = (hex) => {
@@ -75,10 +91,22 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
       
       const rgb = hexToRgb(color)
       if (rgb) {
-        return {
+        const style = {
           backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${config.bgOpacity || '40'})`,
           color: config.textColor || '#E5E7EB'
         }
+        
+        // Добавляем прозрачность если указана
+        if (config.opacity && config.opacity !== '100') {
+          style.opacity = config.opacity / 100
+        }
+        
+        // Добавляем textShadow если есть
+        if (config.textShadow) {
+          style.textShadow = config.textShadow
+        }
+        
+        return style
       }
       return {
         backgroundColor: 'rgba(107, 114, 128, 0.4)',
@@ -87,14 +115,41 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
     }
   }
 
+  // Начало редактирования тега
+  const handleStartEditing = (tag) => {
+    setEditingTag(tag)
+    // Инициализируем временную конфигурацию
+    setTempColorConfig(tagColors[tag] || {
+      type: 'solid',
+      colors: ['#3B82F6'],
+      bgOpacity: '40',
+      textColor: '#FFFFFF',
+      opacity: '100'
+    })
+  }
+
+  // Обновление временной конфигурации
+  const handleTempColorChange = (colorConfig) => {
+    setTempColorConfig(colorConfig)
+  }
+
   // Сохранение цвета тега
-  const handleSaveTagColor = (tag, colorConfig) => {
-    setTagColor(tag, colorConfig)
-    const newColors = getTagColors()
-    setTagColorsState(newColors)
+  const handleSaveTagColor = (tag) => {
+    if (tempColorConfig) {
+      setTagColor(tag, tempColorConfig)
+      const newColors = getTagColors()
+      setTagColorsState(newColors)
+      setEditingTag(null)
+      setTempColorConfig(null)
+      showToast(`Цвет тега "${tag}" сохранен`, 'success')
+      hapticFeedback?.('notification', 'success')
+    }
+  }
+
+  // Отмена редактирования
+  const handleCancelEditing = () => {
     setEditingTag(null)
-    showToast(`Цвет тега "${tag}" сохранен`, 'success')
-    hapticFeedback?.('notification', 'success')
+    setTempColorConfig(null)
   }
 
   // Удаление настройки цвета тега
@@ -267,9 +322,10 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
                   {/* Кнопки действий */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setEditingTag(editingTag === tag ? null : tag)}
+                      onClick={() => handleStartEditing(tag)}
                       className="p-2 text-blue-400 hover:text-blue-300 transition-colors"
                       title="Редактировать цвет"
+                      disabled={editingTag && editingTag !== tag}
                     >
                       <Edit size={16} />
                     </button>
@@ -279,6 +335,7 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
                         onClick={() => handleRemoveTagColor(tag)}
                         className="p-2 text-red-400 hover:text-red-300 transition-colors"
                         title="Сбросить к умолчанию"
+                        disabled={editingTag === tag}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -296,24 +353,27 @@ const TagColorManager = ({ streams = [], onClose, showToast, hapticFeedback }) =
                       className="mt-4 pt-4 border-t border-gray-700"
                     >
                       <GradientColorPicker
-                        value={tagColors[tag] || {
-                          type: 'solid',
-                          colors: ['#3B82F6'],
-                          bgOpacity: '40',
-                          textColor: '#FFFFFF'
-                        }}
-                        onChange={(colorConfig) => handleSaveTagColor(tag, colorConfig)}
+                        value={tempColorConfig}
+                        onChange={handleTempColorChange}
                         label={`Настройка цвета для тега "${tag}"`}
                         showPreview={true}
                       />
                       
                       <div className="flex gap-2 mt-4">
                         <button
-                          onClick={() => setEditingTag(null)}
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                          onClick={() => handleSaveTagColor(tag)}
+                          className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                         >
                           <Check size={16} />
-                          Готово
+                          Сохранить
+                        </button>
+                        
+                        <button
+                          onClick={handleCancelEditing}
+                          className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                          <X size={16} />
+                          Отмена
                         </button>
                       </div>
                     </motion.div>
