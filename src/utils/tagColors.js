@@ -162,6 +162,11 @@ export const getTagColor = (tag) => {
       backgroundClip: 'padding-box'
     }
     
+    // Добавляем общую прозрачность для градиента
+    if (colorConfig.opacity && colorConfig.opacity !== '100') {
+      style.opacity = colorConfig.opacity / 100
+    }
+    
     // Добавляем textShadow если есть
     if (colorConfig.textShadow) {
       style.textShadow = colorConfig.textShadow
@@ -171,10 +176,10 @@ export const getTagColor = (tag) => {
   } else {
     // Обычный цвет
     const bgColor = colorConfig.colors[0]
-    const opacity = colorConfig.bgOpacity || '40'
+    const bgOpacity = colorConfig.bgOpacity || '40'
     const textColor = colorConfig.textColor || '#E5E7EB'
     
-    // Конвертируем hex в rgb для прозрачности
+    // Конвертируем hex в rgb для прозрачности фона
     const hexToRgb = (hex) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
       return result ? {
@@ -186,10 +191,22 @@ export const getTagColor = (tag) => {
     
     const rgb = hexToRgb(bgColor)
     if (rgb) {
-      return {
-        backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${opacity})`,
+      const style = {
+        backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${bgOpacity})`,
         color: textColor
       }
+      
+      // Добавляем общую прозрачность
+      if (colorConfig.opacity && colorConfig.opacity !== '100') {
+        style.opacity = colorConfig.opacity / 100
+      }
+      
+      // Добавляем textShadow если есть
+      if (colorConfig.textShadow) {
+        style.textShadow = colorConfig.textShadow
+      }
+      
+      return style
     }
     
     return 'bg-gray-500/40 text-gray-200'
