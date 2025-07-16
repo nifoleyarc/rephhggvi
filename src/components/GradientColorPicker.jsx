@@ -33,6 +33,7 @@ const GradientColorPicker = ({
   const [direction, setDirection] = useState(value?.direction || 'to right')
   const [bgOpacity, setBgOpacity] = useState(value?.bgOpacity || '40')
   const [textColor, setTextColor] = useState(value?.textColor || '#FFFFFF')
+  const [textShadow, setTextShadow] = useState(value?.textShadow || '')
 
   // Обновляем стейт при изменении пропса
   useEffect(() => {
@@ -42,6 +43,7 @@ const GradientColorPicker = ({
       setDirection(value.direction || 'to right')
       setBgOpacity(value.bgOpacity || '40')
       setTextColor(value.textColor || '#FFFFFF')
+      setTextShadow(value.textShadow || '')
     }
   }, [value])
 
@@ -54,8 +56,14 @@ const GradientColorPicker = ({
       bgOpacity: bgOpacity,
       textColor: textColor
     }
+    
+    // Добавляем textShadow только если он есть
+    if (textShadow) {
+      newValue.textShadow = textShadow
+    }
+    
     onChange(newValue)
-  }, [colorType, colors, direction, bgOpacity, textColor, onChange])
+  }, [colorType, colors, direction, bgOpacity, textColor, textShadow, onChange])
 
   const addColor = () => {
     if (colors.length < 5) {
@@ -77,10 +85,17 @@ const GradientColorPicker = ({
 
   const getPreviewStyle = () => {
     if (colorType === 'gradient') {
-      return {
+      const style = {
         background: `linear-gradient(${direction}, ${colors.join(', ')})`,
         color: textColor
       }
+      
+      // Добавляем textShadow если есть
+      if (textShadow) {
+        style.textShadow = textShadow
+      }
+      
+      return style
     } else {
       const color = colors[0]
       const hexToRgb = (hex) => {
@@ -94,10 +109,17 @@ const GradientColorPicker = ({
       
       const rgb = hexToRgb(color)
       if (rgb) {
-        return {
+        const style = {
           backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.${bgOpacity})`,
           color: textColor
         }
+        
+        // Добавляем textShadow если есть
+        if (textShadow) {
+          style.textShadow = textShadow
+        }
+        
+        return style
       }
       return {}
     }
@@ -307,6 +329,23 @@ const GradientColorPicker = ({
                     placeholder="#FFFFFF"
                   />
                 </div>
+              </div>
+
+              {/* Обводка текста */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Обводка текста (необязательно)
+                </label>
+                <input
+                  type="text"
+                  value={textShadow}
+                  onChange={(e) => setTextShadow(e.target.value)}
+                  className="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                  placeholder="0 0 3px rgba(255, 255, 255, 0.8)"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Пример: "0 0 3px white" для белой обводки
+                </p>
               </div>
 
               {/* Большое превью */}

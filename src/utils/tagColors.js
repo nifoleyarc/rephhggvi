@@ -1,55 +1,63 @@
 // Система управления цветами тегов
 // Поддерживает обычные цвета и градиенты
 
-// Цвета флагов стран с четкими границами (приглушенные тона)
+// Цвета флагов стран с четкими границами (приглушенные прозрачные тона)
 const COUNTRY_FLAG_COLORS = {
   'париж': {
     type: 'gradient',
-    colors: ['#1e3a8a 33%', '#f3f4f6 33%', '#f3f4f6 66%', '#b91c1c 66%'], // Французский флаг - приглушенные тона
+    colors: ['rgba(30, 58, 138, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Французский флаг - прозрачные тона
     direction: 'to right',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'польша': {
     type: 'gradient', 
-    colors: ['#f3f4f6 50%', '#b91c1c 50%'], // Польский флаг - приглушенный красный
+    colors: ['rgba(243, 244, 246, 0.7) 50%', 'rgba(185, 28, 28, 0.7) 50%'], // Польский флаг - прозрачный
     direction: 'to bottom',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'таиланд': {
     type: 'gradient',
-    colors: ['#b91c1c 16.66%', '#f3f4f6 16.66%', '#f3f4f6 33.33%', '#1e3a8a 33.33%', '#1e3a8a 66.66%', '#f3f4f6 66.66%', '#f3f4f6 83.33%', '#b91c1c 83.33%'], // Тайский флаг - приглушенные тона
+    colors: ['rgba(185, 28, 28, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 16.66%', 'rgba(243, 244, 246, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 33.33%', 'rgba(30, 58, 138, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 66.66%', 'rgba(243, 244, 246, 0.7) 83.33%', 'rgba(185, 28, 28, 0.7) 83.33%'], // Тайский флаг - прозрачные тона
     direction: 'to bottom',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'испания': {
     type: 'gradient',
-    colors: ['#b91c1c 25%', '#fbbf24 25%', '#fbbf24 75%', '#b91c1c 75%'], // Испанский флаг - приглушенные красный и желтый
+    colors: ['rgba(185, 28, 28, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 25%', 'rgba(251, 191, 36, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // Испанский флаг - прозрачные тона
     direction: 'to bottom',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'австрия': {
     type: 'gradient',
-    colors: ['#b91c1c 33%', '#f3f4f6 33%', '#f3f4f6 66%', '#b91c1c 66%'], // Австрийский флаг - приглушенный красный
+    colors: ['rgba(185, 28, 28, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Австрийский флаг - прозрачный
     direction: 'to bottom',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'грузия': {
     type: 'gradient',
-    colors: ['#f3f4f6 80%', '#b91c1c 80%'], // Грузинский флаг - приглушенный красный
+    colors: ['rgba(243, 244, 246, 0.7) 80%', 'rgba(185, 28, 28, 0.7) 80%'], // Грузинский флаг - прозрачный
     direction: 'to bottom',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'дубай': {
     type: 'gradient',
-    colors: ['#166534 25%', '#f3f4f6 25%', '#f3f4f6 50%', '#1f2937 50%', '#1f2937 75%', '#b91c1c 75%'], // ОАЭ флаг - приглушенные тона
+    colors: ['rgba(22, 101, 52, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 25%', 'rgba(243, 244, 246, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 50%', 'rgba(31, 41, 55, 0.7) 75%', 'rgba(185, 28, 28, 0.7) 75%'], // ОАЭ флаг - прозрачные тона
     direction: 'to bottom',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   },
   'португалия': {
     type: 'gradient',
-    colors: ['#166534 40%', '#b91c1c 40%'], // Португальский флаг - приглушенные зеленый и красный
+    colors: ['rgba(22, 101, 52, 0.7) 40%', 'rgba(185, 28, 28, 0.7) 40%'], // Португальский флаг - прозрачные тона
     direction: 'to right',
-    textColor: '#000000'
+    textColor: '#000000',
+    textShadow: '0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.5)'
   }
 }
 
@@ -148,11 +156,18 @@ export const getTagColor = (tag) => {
   if (colorConfig.type === 'gradient') {
     // Создаем CSS-класс для градиента с четкими границами
     const gradient = `linear-gradient(${colorConfig.direction || 'to right'}, ${colorConfig.colors.join(', ')})`
-    return {
+    const style = {
       background: gradient,
       color: colorConfig.textColor || '#FFFFFF',
       backgroundClip: 'padding-box'
     }
+    
+    // Добавляем textShadow если есть
+    if (colorConfig.textShadow) {
+      style.textShadow = colorConfig.textShadow
+    }
+    
+    return style
   } else {
     // Обычный цвет
     const bgColor = colorConfig.colors[0]
