@@ -5,7 +5,7 @@
 const COUNTRY_FLAG_COLORS = {
   'париж': {
     type: 'gradient',
-    colors: ['rgba(30, 58, 138, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 33%', 'rgba(243, 244, 246, 0.7) 66%', 'rgba(185, 28, 28, 0.7) 66%'], // Французский флаг - прозрачные тона
+    colors: ['rgba(30, 58, 138, 0.4) 33%', 'rgba(243, 244, 246, 0.4) 33%', 'rgba(243, 244, 246, 0.4) 66%', 'rgba(185, 28, 28, 0.4) 66%'], // Французский флаг - прозрачные тона
     direction: 'to right',
     backgroundTransparency: '20',
     textColor: '#ffffff',
