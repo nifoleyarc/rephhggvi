@@ -350,8 +350,8 @@ const TagColorManager = ({ isOpen, onClose, streams = [] }) => {
       {/* Редактор цвета (модальное окно поверх основного) */}
       {editingTag && tempColorConfig && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-60 p-4">
-          <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+          <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-bold text-white">
                 Редактирование: #{editingTag}
               </h3>
@@ -365,13 +365,17 @@ const TagColorManager = ({ isOpen, onClose, streams = [] }) => {
               </button>
             </div>
             
-            <div className="p-6">
-              <GradientColorPicker
-                colorConfig={tempColorConfig}
-                onChange={setTempColorConfig}
-              />
-              
-              <div className="flex gap-4 mt-6">
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6">
+                <GradientColorPicker
+                  colorConfig={tempColorConfig}
+                  onChange={setTempColorConfig}
+                />
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-700 flex-shrink-0">
+              <div className="flex gap-4">
                 <button
                   onClick={handleSaveEdit}
                   className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"

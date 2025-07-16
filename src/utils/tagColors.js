@@ -215,11 +215,15 @@ function saveTagColorsToLocalStorage(tagColors) {
 // Получение цвета для конкретного тега
 export async function getTagColor(tag) {
   const tagColors = await loadTagColors()
-  const normalizedTag = tag.toLowerCase()
+  const normalizedTag = tag.toLowerCase().replace('#', '')
   
   const config = tagColors[normalizedTag]
   if (!config) {
-    return null
+    // Возвращаем стили по умолчанию если конфигурация не найдена
+    return {
+      backgroundColor: 'rgba(75, 85, 99, 0.4)',
+      color: '#E5E7EB'
+    }
   }
 
   return generateTagStyle(config)

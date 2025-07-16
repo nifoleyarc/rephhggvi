@@ -254,7 +254,7 @@ export function requireDataAccess(req, res, next) {
 // Middleware для проверки только чтения (более мягкая защита)
 export function requireReadAuth(req, res, next) {
   // Для GET запросов к публичным endpoints используем проверку доступа к данным
-  const publicReadEndpoints = ['/streams', '/categories', '/']
+  const publicReadEndpoints = ['/streams', '/categories', '/tag-colors', '/']
   const isPublicRead = req.method === 'GET' && publicReadEndpoints.includes(req.path)
   
   if (isPublicRead) {

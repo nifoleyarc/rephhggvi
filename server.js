@@ -53,7 +53,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', rateLimit, authRoutes)
 app.use('/api/streams', rateLimit, requireReadAuth, logAuth, streamsRoutes) // Чтение доступно всем, запись - только авторизованным
 app.use('/api/categories', rateLimit, requireReadAuth, logAuth, categoriesRoutes)
-app.use('/api/tag-colors', rateLimit, requireDataAccess, logAuth, tagColorsRoutes) // Чтение доступно всем, запись защищено внутри роута
+app.use('/api/tag-colors', rateLimit, requireReadAuth, logAuth, tagColorsRoutes) // Чтение доступно всем, запись защищено внутри роута
 app.use('/api/webhook', webhookRoutes) // Webhook не защищаем, так как он от Telegram (для постов канала)
 app.use('/api/refresh-thumbnail', rateLimit, requireAuth, logAuth, thumbnailRoutes) // Полная защита
 app.use('/api/refresh-thumbnails', rateLimit, requireAuth, logAuth, thumbnailRoutes)
