@@ -50,14 +50,7 @@
 @layer components {
   .stream-card {
     @apply transition-all duration-200 cursor-pointer
-           hover:bg-gray-700/50 active:scale-95 rounded-lg
-           touch-manipulation select-none;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+           hover:bg-gray-700/50 active:scale-95 rounded-lg;
   }
   
   .category-tab {

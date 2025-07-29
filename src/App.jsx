@@ -14,7 +14,6 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showHeaderSearch, setShowHeaderSearch] = useState(false)
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0)
-  const [expandedThumbnail, setExpandedThumbnail] = useState(null)
   const { tg, user, openTelegramLink, openTelegramLinkWithoutClosing } = useTelegram()
   const { streams, categories, loading, fetchStreams, apiConnected } = useStreams()
   const { showToast, ToastContainer } = useToast()
@@ -159,15 +158,13 @@ function App() {
                   streams={streams} 
                   categories={categories}
                   loading={loading}
-                  selectedCategory={selectedCategory}
+                                    selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
                   onStreamClick={(stream) => {
                     openTelegramLink(stream.telegramUrl)
                   }}
                   renderOnlyCategories={true}
                   apiConnected={apiConnected}
-                  expandedThumbnail={expandedThumbnail}
-                  setExpandedThumbnail={setExpandedThumbnail}
                 />
               </div>
             </div>
@@ -186,8 +183,6 @@ function App() {
                 renderOnlyContent={true}
                 onSearchFocus={searchFocusTrigger}
                 apiConnected={apiConnected}
-                expandedThumbnail={expandedThumbnail}
-                setExpandedThumbnail={setExpandedThumbnail}
               />
             </div>
           </motion.div>

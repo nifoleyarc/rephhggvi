@@ -32,13 +32,7 @@
     "check:api-config": "node scripts/check-api-config.js",
     "debug:rate-limit": "node scripts/debug-rate-limit.js",
     "test:stream-update": "node scripts/test-stream-update.js",
-    "test:bot": "node scripts/test-telegraf.js",
-    "webhook:update": "node scripts/webhook-manager.js update",
-    "webhook:status": "node scripts/webhook-manager.js status",
-    "webhook:delete": "node scripts/webhook-manager.js delete",
-    "webhook:test": "node scripts/webhook-manager.js test",
-    "webhook:full": "node scripts/webhook-manager.js full",
-    "webhook:diagnostic": "node scripts/webhook-diagnostic.js"
+    "test:bot": "node scripts/test-telegraf.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
