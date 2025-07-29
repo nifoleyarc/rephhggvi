@@ -142,7 +142,13 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   const [internalExpandedThumbnail, setInternalExpandedThumbnail] = useState(null)
   const expandedThumbnail = externalExpandedThumbnail !== undefined ? externalExpandedThumbnail : internalExpandedThumbnail
   const setExpandedThumbnail = externalSetExpandedThumbnail || setInternalExpandedThumbnail
-  const [isHolding, setIsHolding] = useState(false)
+
+  // Состояние для отслеживания зажатия
+  const [holdState, setHoldState] = useState({
+    isHolding: false,
+    streamId: null,
+    preventClick: false
+  })
 
   // Создаем ref для контейнера контента
   const contentRef = useRef(null)
@@ -151,6 +157,8 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   const categoriesRef2 = useRef(null)
   // Ref для поля поиска
   const searchInputRef = useRef(null)
+  // Ref для таймера зажатия
+  const holdTimerRef = useRef(null)
 
   // Автоматический скролл наверх при смене категории (только если не первый рендер)
   const isFirstRender = useRef(true)
@@ -183,7 +191,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         document.removeEventListener('keydown', handleEscape)
       }
     }
-  }, [expandedThumbnail])
+  }, [expandedThumbnail, setExpandedThumbnail])
 
   // Простой автоматический скролл к выбранной категории
   useEffect(() => {
@@ -312,6 +320,15 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
       }
       if (categoriesRef2.current) {
         categoriesRef2.current.removeEventListener('wheel', handleCategoriesWheel, { capture: true })
+      }
+    }
+  }, [])
+
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current)
       }
     }
   }, [])
@@ -512,117 +529,214 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     }
   }
 
-  // Обработчики для увеличенного превью
-  const handleStreamMouseDown = (e, stream) => {
-    setIsHolding(true)
+  // Функция для запуска таймера зажатия
+  const startHoldTimer = (stream) => {
+    console.log('🕐 Starting hold timer for:', stream.title)
     
-    // Небольшая задержка перед показом увеличенного превью
-    const timer = setTimeout(() => {
+    // Очищаем предыдущий таймер если есть
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current)
+    }
+    
+    // Устанавливаем состояние зажатия
+    setHoldState({
+      isHolding: true,
+      streamId: stream._id,
+      preventClick: false
+    })
+    
+    // Запускаем таймер
+    holdTimerRef.current = setTimeout(() => {
+      console.log('⏰ Hold timer fired, showing expanded thumbnail for:', stream.title)
       setExpandedThumbnail(stream)
       hapticFeedback('impact', 'light')
-    }, 200)
+      
+      // Помечаем что нужно предотвратить клик
+      setHoldState(prev => ({
+        ...prev,
+        preventClick: true
+      }))
+    }, 300) // 300ms для зажатия
+  }
+
+  // Функция для остановки таймера зажатия
+  const stopHoldTimer = () => {
+    console.log('🛑 Stopping hold timer')
     
-    // Сохраняем timer в ref для очистки
-    e.currentTarget._holdTimer = timer
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+    
+    // Сбрасываем состояние зажатия через небольшую задержку
+    setTimeout(() => {
+      setHoldState({
+        isHolding: false,
+        streamId: null,
+        preventClick: false
+      })
+    }, 100)
+  }
+
+  // Обработчики для мыши
+  const handleStreamMouseDown = (e, stream) => {
+    console.log('🖱️ MouseDown triggered for stream:', stream.title)
+    e.preventDefault()
+    startHoldTimer(stream)
   }
 
   const handleStreamMouseUp = (e, stream) => {
-    setIsHolding(false)
+    console.log('🖱️ MouseUp triggered for stream:', stream.title)
+    e.preventDefault()
+    stopHoldTimer()
     
-    // Очищаем timer
-    if (e.currentTarget._holdTimer) {
-      clearTimeout(e.currentTarget._holdTimer)
-      e.currentTarget._holdTimer = null
-    }
-    
-    // Если превью было показано, убираем его
+    // Закрываем превью если оно было показано
     if (expandedThumbnail && expandedThumbnail._id === stream._id) {
       setExpandedThumbnail(null)
     }
   }
 
   const handleStreamMouseLeave = (e, stream) => {
-    setIsHolding(false)
+    console.log('🖱️ MouseLeave triggered for stream:', stream.title)
+    stopHoldTimer()
     
-    // Очищаем timer
-    if (e.currentTarget._holdTimer) {
-      clearTimeout(e.currentTarget._holdTimer)
-      e.currentTarget._holdTimer = null
-    }
-    
-    // Убираем увеличенное превью
+    // Закрываем превью если оно было показано
     if (expandedThumbnail && expandedThumbnail._id === stream._id) {
       setExpandedThumbnail(null)
     }
   }
 
+  // Обработчики для тача
   const handleStreamTouchStart = (e, stream) => {
+    console.log('📱 TouchStart triggered for stream:', stream.title)
+    
+    // Сохраняем начальную позицию для отслеживания движения
     const touch = e.touches[0]
-    setIsHolding(true)
-    
-    // Предотвращаем скролл при зажатии
+    e.currentTarget._touchStartX = touch.clientX
     e.currentTarget._touchStartY = touch.clientY
+    e.currentTarget._touchMoved = false
     
-    // Небольшая задержка перед показом увеличенного превью
-    const timer = setTimeout(() => {
-      setExpandedThumbnail(stream)
-      hapticFeedback('impact', 'light')
-    }, 300) // Немного больше задержка для touch
-    
-    // Сохраняем timer в ref для очистки
-    e.currentTarget._holdTimer = timer
-  }
-
-  const handleStreamTouchEnd = (e, stream) => {
-    setIsHolding(false)
-    
-    // Очищаем timer
-    if (e.currentTarget._holdTimer) {
-      clearTimeout(e.currentTarget._holdTimer)
-      e.currentTarget._holdTimer = null
-    }
-    
-    // Если превью было показано, убираем его
-    if (expandedThumbnail && expandedThumbnail._id === stream._id) {
-      setExpandedThumbnail(null)
-    }
+    startHoldTimer(stream)
   }
 
   const handleStreamTouchMove = (e, stream) => {
-    if (!e.currentTarget._touchStartY) return
+    if (!e.currentTarget._touchStartX || !e.currentTarget._touchStartY) return
     
     const touch = e.touches[0]
+    const deltaX = Math.abs(touch.clientX - e.currentTarget._touchStartX)
     const deltaY = Math.abs(touch.clientY - e.currentTarget._touchStartY)
     
-    // Если палец сдвинулся более чем на 10px, считаем это скроллом и отменяем зажатие
-    if (deltaY > 10) {
-      setIsHolding(false)
-      if (e.currentTarget._holdTimer) {
-        clearTimeout(e.currentTarget._holdTimer)
-        e.currentTarget._holdTimer = null
-      }
+    // Если палец сдвинулся более чем на 10px, отменяем зажатие
+    if (deltaX > 10 || deltaY > 10) {
+      e.currentTarget._touchMoved = true
+      console.log('📱 Touch moved, cancelling hold for:', stream.title)
+      stopHoldTimer()
     }
   }
 
-  const handleStreamClick = (stream) => {
-    // Сбрасываем состояние зажатия
-    setIsHolding(false)
+  const handleStreamTouchEnd = (e, stream) => {
+    console.log('📱 TouchEnd triggered for stream:', stream.title)
+    e.preventDefault()
     
-    // Если превью было показано, не открываем стрим
+    stopHoldTimer()
+    
+    // Закрываем превью если оно было показано
     if (expandedThumbnail && expandedThumbnail._id === stream._id) {
+      setExpandedThumbnail(null)
+    }
+    
+    // Очищаем данные о касании
+    e.currentTarget._touchStartX = null
+    e.currentTarget._touchStartY = null
+    e.currentTarget._touchMoved = false
+  }
+
+  // Обработчик клика по стриму
+  const handleStreamClick = (stream) => {
+    console.log('🖱️ Click triggered for stream:', stream.title, 'preventClick:', holdState.preventClick)
+    
+    // Если превью показано, просто закрываем его
+    if (expandedThumbnail && expandedThumbnail._id === stream._id) {
+      console.log('❌ Click cancelled - expanded thumbnail was shown')
       setExpandedThumbnail(null)
       return
     }
     
-    // Если было зажатие, не открываем стрим
-    if (isHolding) {
+    // Если нужно предотвратить клик после зажатия
+    if (holdState.preventClick && holdState.streamId === stream._id) {
+      console.log('❌ Click cancelled - was holding')
       return
     }
     
+    console.log('✅ Opening stream:', stream.title)
     hapticFeedback('impact', 'light')
     onStreamClick(stream)
   }
 
+  // Компонент карточки стрима
+  const StreamCard = ({ stream, index }) => (
+    <div
+      key={stream._id}
+      onClick={() => handleStreamClick(stream)}
+      onMouseDown={(e) => handleStreamMouseDown(e, stream)}
+      onMouseUp={(e) => handleStreamMouseUp(e, stream)}
+      onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
+      onTouchStart={(e) => handleStreamTouchStart(e, stream)}
+      onTouchMove={(e) => handleStreamTouchMove(e, stream)}
+      onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
+      className="stream-card"
+      style={{ 
+        WebkitTapHighlightColor: 'transparent',
+        userSelect: 'none'
+      }}
+    >
+      <div className="flex gap-4 py-3 pr-3">
+        {/* Превью */}
+        <div className="relative w-40 h-24 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
+          {stream.thumbnail ? (
+            <ThumbnailImage thumbnail={stream.thumbnail} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Play size={24} className="text-gray-400" />
+            </div>
+          )}
+        </div>
+
+        {/* Информация */}
+        <div className="flex-1 min-w-0 -mt-[3.5px]">
+          <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
+            {stream.title}
+          </h3>
+          
+          <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
+            <Calendar size={16} />
+            <span className="font-roobert-regular">
+              {formatDateSafely(stream.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
+            </span>
+          </div>
+
+          {stream.tags && stream.tags.length > 0 && (
+            <div className="flex items-center gap-1 text-sm">
+              <Tag size={14} />
+              <div className="flex gap-1 overflow-hidden">
+                {stream.tags.slice(0, 3).map((tag, tagIndex) => (
+                  <span
+                    key={tagIndex}
+                    className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                  >
+                    {tag.replace('#', '')}
+                  </span>
+                ))}
+                {stream.tags.length > 3 && (
+                  <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 
   if (loading && !renderOnlyCategories) {
     return <LoadingSkeleton />
@@ -677,150 +791,171 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   // Рендерим только контент (поиск, сортировка, стримы)
   if (renderOnlyContent) {
     return (
-      <div ref={contentRef} className="px-4 space-y-4 pt-4">
-        {/* Поиск */}
-        <div className="space-y-3">
-          <div className="relative bg-tg-secondary-bg/50 border-2 border-gray-600/50 rounded-lg p-1">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-tg-hint" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              inputMode="text"
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck="false"
-              placeholder="Поиск по названию, тегам, дате..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                // Скролл наверх при вводе
-                if (e.target.value.length > 0) {
-                  window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                  })
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.target.blur()
-                }
-              }}
-              className="w-full pl-10 pr-10 py-3 bg-transparent text-sm text-tg-text placeholder-tg-hint focus:outline-none font-roobert-light"
-            />
+      <>
+        <div ref={contentRef} className="px-4 space-y-4 pt-4">
+          {/* Поиск */}
+          <div className="space-y-3">
+            <div className="relative bg-tg-secondary-bg/50 border-2 border-gray-600/50 rounded-lg p-1">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-tg-hint" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                inputMode="text"
+                autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck="false"
+                placeholder="Поиск по названию, тегам, дате..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  // Скролл наверх при вводе
+                  if (e.target.value.length > 0) {
+                    window.scrollTo({
+                      top: 0,
+                      behavior: 'smooth'
+                    })
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.target.blur()
+                  }
+                }}
+                className="w-full pl-10 pr-10 py-3 bg-transparent text-sm text-tg-text placeholder-tg-hint focus:outline-none font-roobert-light"
+              />
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-600 transition-colors"
+                >
+                  <X size={14} className="text-tg-hint" />
+                </button>
+              )}
+            </div>
+            
+            {/* Счетчик результатов */}
             {searchQuery.trim() && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-600 transition-colors"
-              >
-                <X size={14} className="text-tg-hint" />
-              </button>
+              <div className="text-sm text-tg-hint font-roobert-light">
+                Найдено: {filteredAndSortedStreams.length} из {streams.length}
+              </div>
             )}
           </div>
-          
-          {/* Счетчик результатов */}
-          {searchQuery.trim() && (
-            <div className="text-sm text-tg-hint font-roobert-light">
-              Найдено: {filteredAndSortedStreams.length} из {streams.length}
+
+          {/* Сортировка */}
+          <div className="flex gap-2 text-base">
+            <span className="text-tg-hint font-roobert-light">Сортировка:</span>
+            {[
+              { key: 'date', label: 'По дате' },
+              { key: 'name', label: 'По названию' }
+            ].map((sort) => (
+              <button
+                key={sort.key}
+                onClick={() => handleSortChange(sort.key)}
+                className={`px-4 py-1 rounded text-sm font-roobert-light transition-colors ${
+                  sortBy === sort.key
+                    ? 'bg-tg-button text-tg-button-text'
+                    : 'text-tg-hint hover:text-tg-text'
+                }`}
+              >
+                {sort.label}
+                {sortBy === sort.key && (
+                  <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Список стримов */}
+          <div className="grid gap-3">
+            {filteredAndSortedStreams.map((stream, index) => (
+              <StreamCard key={stream._id} stream={stream} index={index} />
+            ))}
+          </div>
+
+          {filteredAndSortedStreams.length === 0 && (
+            <div className="text-center py-8 text-tg-hint">
+              <Play size={48} className="mx-auto mb-2 opacity-50" />
+              <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
             </div>
           )}
         </div>
 
-        {/* Сортировка */}
-        <div className="flex gap-2 text-base">
-          <span className="text-tg-hint font-roobert-light">Сортировка:</span>
-          {[
-            { key: 'date', label: 'По дате' },
-            { key: 'name', label: 'По названию' }
-          ].map((sort) => (
-            <button
-              key={sort.key}
-              onClick={() => handleSortChange(sort.key)}
-              className={`px-4 py-1 rounded text-sm font-roobert-light transition-colors ${
-                sortBy === sort.key
-                  ? 'bg-tg-button text-tg-button-text'
-                  : 'text-tg-hint hover:text-tg-text'
-              }`}
+        {/* Модальное окно с увеличенным превью */}
+        <AnimatePresence>
+          {expandedThumbnail && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+              onClick={() => setExpandedThumbnail(null)}
             >
-              {sort.label}
-              {sortBy === sort.key && (
-                <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-              {/* Список стримов */}
-              <div className="grid gap-3">
-        {filteredAndSortedStreams.map((stream, index) => (
-          <div
-            key={stream._id}
-            onClick={() => handleStreamClick(stream)}
-            onMouseDown={(e) => handleStreamMouseDown(e, stream)}
-            onMouseUp={(e) => handleStreamMouseUp(e, stream)}
-            onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
-            onTouchStart={(e) => handleStreamTouchStart(e, stream)}
-            onTouchMove={(e) => handleStreamTouchMove(e, stream)}
-            onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
-            className="stream-card"
-          >
-            <div className="flex gap-4 py-3 pr-3">
-              {/* Превью */}
-              <div className="relative w-40 h-24 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
-                {stream.thumbnail ? (
-                  <ThumbnailImage thumbnail={stream.thumbnail} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Play size={24} className="text-gray-400" />
-                  </div>
-                )}
-              </div>
-
-              {/* Информация */}
-              <div className="flex-1 min-w-0 -mt-[3.5px]">
-                <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
-                  {stream.title}
-                </h3>
-                
-                <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
-                  <Calendar size={16} />
-                  <span className="font-roobert-regular">
-                    {formatDateSafely(stream.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
-                  </span>
-                </div>
-
-                {stream.tags && stream.tags.length > 0 && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <Tag size={14} />
-                    <div className="flex gap-1 overflow-hidden">
-                      {stream.tags.slice(0, 3).map((tag, tagIndex) => (
-                        <span
-                          key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                        >
-                          {tag.replace('#', '')}
-                        </span>
-                      ))}
-                      {stream.tags.length > 3 && (
-                        <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
-                      )}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="relative max-w-[90vw] max-h-[80vh] rounded-lg overflow-hidden shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Увеличенное превью */}
+                <div className="relative">
+                  {expandedThumbnail.thumbnail ? (
+                    <div className="w-full min-h-[300px] max-w-[600px] max-h-[400px]">
+                      <ThumbnailImage thumbnail={expandedThumbnail.thumbnail} />
                     </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800 min-h-[300px] min-w-[400px]">
+                      <Play size={48} className="text-gray-400" />
+                    </div>
+                  )}
+                  
+                  {/* Информация о стриме */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
+                    <h3 className="text-white font-roobert-medium text-lg mb-2 line-clamp-2">
+                      {expandedThumbnail.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-300 mb-2">
+                      <Calendar size={16} />
+                      <span className="font-roobert-regular">
+                        {formatDateSafely(expandedThumbnail.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
+                      </span>
+                    </div>
+                    {expandedThumbnail.tags && expandedThumbnail.tags.length > 0 && (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Tag size={14} className="text-gray-300" />
+                        <div className="flex gap-1 flex-wrap">
+                          {expandedThumbnail.tags.slice(0, 5).map((tag, tagIndex) => (
+                            <span
+                              key={tagIndex}
+                              className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                            >
+                              {tag.replace('#', '')}
+                            </span>
+                          ))}
+                          {expandedThumbnail.tags.length > 5 && (
+                            <span className="text-gray-300 font-roobert-regular text-sm">+{expandedThumbnail.tags.length - 5}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredAndSortedStreams.length === 0 && (
-        <div className="text-center py-8 text-tg-hint">
-          <Play size={48} className="mx-auto mb-2 opacity-50" />
-          <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
-        </div>
-      )}
-      </div>
+                </div>
+                
+                {/* Кнопка закрытия */}
+                <button
+                  onClick={() => setExpandedThumbnail(null)}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+                >
+                  <X size={20} className="text-white" />
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
     )
   }
   
@@ -961,78 +1096,20 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
 
         {/* Список стримов */}
         <div className="grid gap-3">
-        {filteredAndSortedStreams.map((stream, index) => (
-          <div
-            key={stream._id}
-            onClick={() => handleStreamClick(stream)}
-            onMouseDown={(e) => handleStreamMouseDown(e, stream)}
-            onMouseUp={(e) => handleStreamMouseUp(e, stream)}
-            onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
-            onTouchStart={(e) => handleStreamTouchStart(e, stream)}
-            onTouchMove={(e) => handleStreamTouchMove(e, stream)}
-            onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
-            className="stream-card"
-          >
-            <div className="flex gap-4 py-3 pr-3">
-              {/* Превью */}
-              <div className="relative w-40 h-24 bg-gray-700/50 rounded-lg overflow-hidden flex-shrink-0">
-                {stream.thumbnail ? (
-                  <ThumbnailImage thumbnail={stream.thumbnail} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Play size={24} className="text-gray-400" />
-                  </div>
-                )}
-              </div>
+          {filteredAndSortedStreams.map((stream, index) => (
+            <StreamCard key={stream._id} stream={stream} index={index} />
+          ))}
+        </div>
 
-              {/* Информация */}
-              <div className="flex-1 min-w-0 -mt-[3.5px]">
-                <h3 className="font-roobert-medium text-base leading-tight mb-1 line-clamp-2">
-                  {stream.title}
-                </h3>
-                
-                <div className="flex items-center gap-2 text-sm text-neutral-300 mb-1">
-                  <Calendar size={16} />
-                  <span className="font-roobert-regular">
-                    {formatDateSafely(stream.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
-                  </span>
-                </div>
-
-                {stream.tags && stream.tags.length > 0 && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <Tag size={14} />
-                    <div className="flex gap-1 overflow-hidden">
-                      {stream.tags.slice(0, 3).map((tag, tagIndex) => (
-                        <span
-                          key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                        >
-                          {tag.replace('#', '')}
-                        </span>
-                      ))}
-                      {stream.tags.length > 3 && (
-                        <span className="text-tg-hint font-roobert-regular text-sm">+{stream.tags.length - 3}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+        {filteredAndSortedStreams.length === 0 && (
+          <div className="text-center py-8 text-tg-hint">
+            <Play size={48} className="mx-auto mb-2 opacity-50" />
+            <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
           </div>
-        ))}
+        )}
       </div>
 
-      {filteredAndSortedStreams.length === 0 && (
-        <div className="text-center py-8 text-tg-hint">
-          <Play size={48} className="mx-auto mb-2 opacity-50" />
-          <p>{searchQuery ? 'По вашему запросу ничего не найдено' : 'Стримов не найдено'}</p>
-
-        </div>
-      )}
-    </div>
-
-    {/* Модальное окно с увеличенным превью - показываем только в renderOnlyContent */}
-    {renderOnlyContent && (
+      {/* Модальное окно с увеличенным превью - показываем всегда в полном рендере */}
       <AnimatePresence>
         {expandedThumbnail && (
           <motion.div
@@ -1054,16 +1131,18 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
               {/* Увеличенное превью */}
               <div className="relative">
                 {expandedThumbnail.thumbnail ? (
-                  <ThumbnailImage thumbnail={expandedThumbnail.thumbnail} />
+                  <div className="w-full min-h-[300px] max-w-[600px] max-h-[400px]">
+                    <ThumbnailImage thumbnail={expandedThumbnail.thumbnail} />
+                  </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-800 min-h-[300px]">
+                  <div className="w-full h-full flex items-center justify-center bg-gray-800 min-h-[300px] min-w-[400px]">
                     <Play size={48} className="text-gray-400" />
                   </div>
                 )}
                 
                 {/* Информация о стриме */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                  <h3 className="text-white font-roobert-medium text-lg mb-2">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
+                  <h3 className="text-white font-roobert-medium text-lg mb-2 line-clamp-2">
                     {expandedThumbnail.title}
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-gray-300 mb-2">
@@ -1075,8 +1154,8 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                   {expandedThumbnail.tags && expandedThumbnail.tags.length > 0 && (
                     <div className="flex items-center gap-1 text-sm">
                       <Tag size={14} className="text-gray-300" />
-                      <div className="flex gap-1 overflow-hidden">
-                        {expandedThumbnail.tags.slice(0, 3).map((tag, tagIndex) => (
+                      <div className="flex gap-1 flex-wrap">
+                        {expandedThumbnail.tags.slice(0, 5).map((tag, tagIndex) => (
                           <span
                             key={tagIndex}
                             className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
@@ -1084,8 +1163,8 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                             {tag.replace('#', '')}
                           </span>
                         ))}
-                        {expandedThumbnail.tags.length > 3 && (
-                          <span className="text-gray-300 font-roobert-regular text-sm">+{expandedThumbnail.tags.length - 3}</span>
+                        {expandedThumbnail.tags.length > 5 && (
+                          <span className="text-gray-300 font-roobert-regular text-sm">+{expandedThumbnail.tags.length - 5}</span>
                         )}
                       </div>
                     </div>
@@ -1104,8 +1183,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
           </motion.div>
         )}
       </AnimatePresence>
-    )}
-  </div>
+    </div>
   )
 }
 
@@ -1140,4 +1218,4 @@ const LoadingSkeleton = () => (
   </div>
 )
 
-export default StreamList 
+export default StreamList
