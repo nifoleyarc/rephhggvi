@@ -514,7 +514,6 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
 
   // Обработчики для увеличенного превью
   const handleStreamMouseDown = (e, stream) => {
-    e.preventDefault()
     setIsHolding(true)
     
     // Небольшая задержка перед показом увеличенного превью
@@ -528,7 +527,6 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   }
 
   const handleStreamMouseUp = (e, stream) => {
-    e.preventDefault()
     setIsHolding(false)
     
     // Очищаем timer
@@ -544,7 +542,6 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   }
 
   const handleStreamMouseLeave = (e, stream) => {
-    e.preventDefault()
     setIsHolding(false)
     
     // Очищаем timer
@@ -563,6 +560,9 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     const touch = e.touches[0]
     setIsHolding(true)
     
+    // Предотвращаем скролл при зажатии
+    e.currentTarget._touchStartY = touch.clientY
+    
     // Небольшая задержка перед показом увеличенного превью
     const timer = setTimeout(() => {
       setExpandedThumbnail(stream)
@@ -574,7 +574,6 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   }
 
   const handleStreamTouchEnd = (e, stream) => {
-    e.preventDefault()
     setIsHolding(false)
     
     // Очищаем timer
@@ -589,10 +588,34 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     }
   }
 
+  const handleStreamTouchMove = (e, stream) => {
+    if (!e.currentTarget._touchStartY) return
+    
+    const touch = e.touches[0]
+    const deltaY = Math.abs(touch.clientY - e.currentTarget._touchStartY)
+    
+    // Если палец сдвинулся более чем на 10px, считаем это скроллом и отменяем зажатие
+    if (deltaY > 10) {
+      setIsHolding(false)
+      if (e.currentTarget._holdTimer) {
+        clearTimeout(e.currentTarget._holdTimer)
+        e.currentTarget._holdTimer = null
+      }
+    }
+  }
+
   const handleStreamClick = (stream) => {
+    // Сбрасываем состояние зажатия
+    setIsHolding(false)
+    
     // Если превью было показано, не открываем стрим
     if (expandedThumbnail && expandedThumbnail._id === stream._id) {
       setExpandedThumbnail(null)
+      return
+    }
+    
+    // Если было зажатие, не открываем стрим
+    if (isHolding) {
       return
     }
     
@@ -738,6 +761,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
             onMouseUp={(e) => handleStreamMouseUp(e, stream)}
             onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
             onTouchStart={(e) => handleStreamTouchStart(e, stream)}
+            onTouchMove={(e) => handleStreamTouchMove(e, stream)}
             onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
             className="stream-card"
           >
@@ -945,6 +969,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
             onMouseUp={(e) => handleStreamMouseUp(e, stream)}
             onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
             onTouchStart={(e) => handleStreamTouchStart(e, stream)}
+            onTouchMove={(e) => handleStreamTouchMove(e, stream)}
             onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
             className="stream-card"
           >
