@@ -530,8 +530,8 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   }
 
   // Функция для запуска таймера зажатия
-  const startHoldTimer = (stream) => {
-    console.log('🕐 Starting hold timer for:', stream.title)
+  const startHoldTimer = (stream, isMouse = false) => {
+    console.log('🕐 Starting hold timer for:', stream.title, 'isMouse:', isMouse)
     
     // Очищаем предыдущий таймер если есть
     if (holdTimerRef.current) {
@@ -545,22 +545,23 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
       preventClick: false
     })
     
-    // Запускаем таймер
+    // Запускаем таймер (больше времени для touch чтобы не мешать скроллу)
+    const holdDelay = isMouse ? 400 : 600 // 400ms для мыши, 600ms для тача
     holdTimerRef.current = setTimeout(() => {
       console.log('⏰ Hold timer fired, showing expanded thumbnail for:', stream.title)
       setExpandedThumbnail(stream)
-      hapticFeedback('impact', 'light')
+      hapticFeedback('impact', 'medium')
       
       // Помечаем что нужно предотвратить клик
       setHoldState(prev => ({
         ...prev,
         preventClick: true
       }))
-    }, 300) // 300ms для зажатия
+    }, holdDelay)
   }
 
   // Функция для остановки таймера зажатия
-  const stopHoldTimer = () => {
+  const stopHoldTimer = (immediate = false) => {
     console.log('🛑 Stopping hold timer')
     
     if (holdTimerRef.current) {
@@ -568,26 +569,26 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
       holdTimerRef.current = null
     }
     
-    // Сбрасываем состояние зажатия через небольшую задержку
+    // Сбрасываем состояние зажатия
+    const resetDelay = immediate ? 0 : 50
     setTimeout(() => {
       setHoldState({
         isHolding: false,
         streamId: null,
         preventClick: false
       })
-    }, 100)
+    }, resetDelay)
   }
 
   // Обработчики для мыши
   const handleStreamMouseDown = (e, stream) => {
     console.log('🖱️ MouseDown triggered for stream:', stream.title)
-    e.preventDefault()
-    startHoldTimer(stream)
+    // НЕ preventDefault для mouse - это может мешать другим событиям
+    startHoldTimer(stream, true)
   }
 
   const handleStreamMouseUp = (e, stream) => {
     console.log('🖱️ MouseUp triggered for stream:', stream.title)
-    e.preventDefault()
     stopHoldTimer()
     
     // Закрываем превью если оно было показано
@@ -606,38 +607,53 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     }
   }
 
-  // Обработчики для тача
+  // Обработчики для тача - более аккуратные
   const handleStreamTouchStart = (e, stream) => {
     console.log('📱 TouchStart triggered for stream:', stream.title)
     
-    // Сохраняем начальную позицию для отслеживания движения
+    // НЕ preventDefault - позволяем браузеру обрабатывать скролл
     const touch = e.touches[0]
-    e.currentTarget._touchStartX = touch.clientX
-    e.currentTarget._touchStartY = touch.clientY
-    e.currentTarget._touchMoved = false
     
-    startHoldTimer(stream)
+    // Сохраняем данные о касании
+    const touchData = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startTime: Date.now(),
+      moved: false,
+      cancelled: false
+    }
+    
+    // Сохраняем в элементе
+    e.currentTarget._touchData = touchData
+    
+    // Запускаем таймер зажатия
+    startHoldTimer(stream, false)
   }
 
   const handleStreamTouchMove = (e, stream) => {
-    if (!e.currentTarget._touchStartX || !e.currentTarget._touchStartY) return
+    const touchData = e.currentTarget._touchData
+    if (!touchData || touchData.cancelled) return
     
     const touch = e.touches[0]
-    const deltaX = Math.abs(touch.clientX - e.currentTarget._touchStartX)
-    const deltaY = Math.abs(touch.clientY - e.currentTarget._touchStartY)
+    const deltaX = Math.abs(touch.clientX - touchData.startX)
+    const deltaY = Math.abs(touch.clientY - touchData.startY)
     
-    // Если палец сдвинулся более чем на 10px, отменяем зажатие
-    if (deltaX > 10 || deltaY > 10) {
-      e.currentTarget._touchMoved = true
-      console.log('📱 Touch moved, cancelling hold for:', stream.title)
-      stopHoldTimer()
+    // Более строгие условия для отмены зажатия
+    // Особенно чувствительны к вертикальному движению (скролл)
+    if (deltaY > 8 || deltaX > 15) {
+      console.log('📱 Touch moved significantly, cancelling hold for:', stream.title, { deltaY, deltaX })
+      touchData.moved = true
+      touchData.cancelled = true
+      stopHoldTimer(true)
     }
   }
 
   const handleStreamTouchEnd = (e, stream) => {
     console.log('📱 TouchEnd triggered for stream:', stream.title)
-    e.preventDefault()
     
+    const touchData = e.currentTarget._touchData
+    
+    // НЕ preventDefault - позволяем браузеру завершить touch события
     stopHoldTimer()
     
     // Закрываем превью если оно было показано
@@ -646,13 +662,11 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     }
     
     // Очищаем данные о касании
-    e.currentTarget._touchStartX = null
-    e.currentTarget._touchStartY = null
-    e.currentTarget._touchMoved = false
+    e.currentTarget._touchData = null
   }
 
   // Обработчик клика по стриму
-  const handleStreamClick = (stream) => {
+  const handleStreamClick = (e, stream) => {
     console.log('🖱️ Click triggered for stream:', stream.title, 'preventClick:', holdState.preventClick)
     
     // Если превью показано, просто закрываем его
@@ -665,6 +679,14 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     // Если нужно предотвратить клик после зажатия
     if (holdState.preventClick && holdState.streamId === stream._id) {
       console.log('❌ Click cancelled - was holding')
+      // Сбрасываем флаг предотвращения клика
+      setHoldState(prev => ({ ...prev, preventClick: false }))
+      return
+    }
+    
+    // Проверяем данные touch события - если было движение, не кликаем
+    if (e.currentTarget._touchData && e.currentTarget._touchData.moved) {
+      console.log('❌ Click cancelled - touch was moved')
       return
     }
     
@@ -677,17 +699,18 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   const StreamCard = ({ stream, index }) => (
     <div
       key={stream._id}
-      onClick={() => handleStreamClick(stream)}
+      onClick={(e) => handleStreamClick(e, stream)}
       onMouseDown={(e) => handleStreamMouseDown(e, stream)}
       onMouseUp={(e) => handleStreamMouseUp(e, stream)}
       onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
       onTouchStart={(e) => handleStreamTouchStart(e, stream)}
       onTouchMove={(e) => handleStreamTouchMove(e, stream)}
       onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
-      className="stream-card"
+      className="stream-card cursor-pointer"
       style={{ 
         WebkitTapHighlightColor: 'transparent',
-        userSelect: 'none'
+        userSelect: 'none',
+        touchAction: 'manipulation' // Добавляем для лучшей работы touch событий
       }}
     >
       <div className="flex gap-4 py-3 pr-3">
