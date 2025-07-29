@@ -138,6 +138,10 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   const [searchQuery, setSearchQuery] = useState('')
   const { hapticFeedback } = useTelegram()
 
+  // Состояние для увеличенного превью
+  const [expandedThumbnail, setExpandedThumbnail] = useState(null)
+  const [isHolding, setIsHolding] = useState(false)
+
   // Создаем ref для контейнера контента
   const contentRef = useRef(null)
   // Рефы для категорий
@@ -159,6 +163,25 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
       behavior: 'smooth'
     })
   }, [selectedCategory])
+
+  // Обработчик клавиши Escape для закрытия модального окна и предотвращение скролла
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && expandedThumbnail) {
+        setExpandedThumbnail(null)
+      }
+    }
+
+    if (expandedThumbnail) {
+      // Предотвращаем скролл страницы
+      document.body.style.overflow = 'hidden'
+      document.addEventListener('keydown', handleEscape)
+      return () => {
+        document.body.style.overflow = 'unset'
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+  }, [expandedThumbnail])
 
   // Простой автоматический скролл к выбранной категории
   useEffect(() => {
@@ -487,11 +510,93 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
     }
   }
 
+  // Обработчики для увеличенного превью
+  const handleStreamMouseDown = (e, stream) => {
+    e.preventDefault()
+    setIsHolding(true)
+    
+    // Небольшая задержка перед показом увеличенного превью
+    const timer = setTimeout(() => {
+      setExpandedThumbnail(stream)
+      hapticFeedback('impact', 'light')
+    }, 200)
+    
+    // Сохраняем timer в ref для очистки
+    e.currentTarget._holdTimer = timer
+  }
+
+  const handleStreamMouseUp = (e, stream) => {
+    e.preventDefault()
+    setIsHolding(false)
+    
+    // Очищаем timer
+    if (e.currentTarget._holdTimer) {
+      clearTimeout(e.currentTarget._holdTimer)
+      e.currentTarget._holdTimer = null
+    }
+    
+    // Если превью было показано, убираем его
+    if (expandedThumbnail && expandedThumbnail._id === stream._id) {
+      setExpandedThumbnail(null)
+    }
+  }
+
+  const handleStreamMouseLeave = (e, stream) => {
+    e.preventDefault()
+    setIsHolding(false)
+    
+    // Очищаем timer
+    if (e.currentTarget._holdTimer) {
+      clearTimeout(e.currentTarget._holdTimer)
+      e.currentTarget._holdTimer = null
+    }
+    
+    // Убираем увеличенное превью
+    if (expandedThumbnail && expandedThumbnail._id === stream._id) {
+      setExpandedThumbnail(null)
+    }
+  }
+
+  const handleStreamTouchStart = (e, stream) => {
+    const touch = e.touches[0]
+    setIsHolding(true)
+    
+    // Небольшая задержка перед показом увеличенного превью
+    const timer = setTimeout(() => {
+      setExpandedThumbnail(stream)
+      hapticFeedback('impact', 'light')
+    }, 300) // Немного больше задержка для touch
+    
+    // Сохраняем timer в ref для очистки
+    e.currentTarget._holdTimer = timer
+  }
+
+  const handleStreamTouchEnd = (e, stream) => {
+    e.preventDefault()
+    setIsHolding(false)
+    
+    // Очищаем timer
+    if (e.currentTarget._holdTimer) {
+      clearTimeout(e.currentTarget._holdTimer)
+      e.currentTarget._holdTimer = null
+    }
+    
+    // Если превью было показано, убираем его
+    if (expandedThumbnail && expandedThumbnail._id === stream._id) {
+      setExpandedThumbnail(null)
+    }
+  }
+
   const handleStreamClick = (stream) => {
+    // Если превью было показано, не открываем стрим
+    if (expandedThumbnail && expandedThumbnail._id === stream._id) {
+      setExpandedThumbnail(null)
+      return
+    }
+    
     hapticFeedback('impact', 'light')
     onStreamClick(stream)
   }
-
 
 
   if (loading && !renderOnlyCategories) {
@@ -627,6 +732,11 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
           <div
             key={stream._id}
             onClick={() => handleStreamClick(stream)}
+            onMouseDown={(e) => handleStreamMouseDown(e, stream)}
+            onMouseUp={(e) => handleStreamMouseUp(e, stream)}
+            onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
+            onTouchStart={(e) => handleStreamTouchStart(e, stream)}
+            onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
             className="stream-card"
           >
             <div className="flex gap-4 py-3 pr-3">
@@ -829,6 +939,11 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
           <div
             key={stream._id}
             onClick={() => handleStreamClick(stream)}
+            onMouseDown={(e) => handleStreamMouseDown(e, stream)}
+            onMouseUp={(e) => handleStreamMouseUp(e, stream)}
+            onMouseLeave={(e) => handleStreamMouseLeave(e, stream)}
+            onTouchStart={(e) => handleStreamTouchStart(e, stream)}
+            onTouchEnd={(e) => handleStreamTouchEnd(e, stream)}
             className="stream-card"
           >
             <div className="flex gap-4 py-3 pr-3">
@@ -888,6 +1003,79 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
         </div>
       )}
     </div>
+
+    {/* Модальное окно с увеличенным превью */}
+    <AnimatePresence>
+      {expandedThumbnail && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setExpandedThumbnail(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="relative max-w-[90vw] max-h-[80vh] rounded-lg overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Увеличенное превью */}
+            <div className="relative">
+              {expandedThumbnail.thumbnail ? (
+                <ThumbnailImage thumbnail={expandedThumbnail.thumbnail} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-800 min-h-[300px]">
+                  <Play size={48} className="text-gray-400" />
+                </div>
+              )}
+              
+              {/* Информация о стриме */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                <h3 className="text-white font-roobert-medium text-lg mb-2">
+                  {expandedThumbnail.title}
+                </h3>
+                <div className="flex items-center gap-2 text-sm text-gray-300 mb-2">
+                  <Calendar size={16} />
+                  <span className="font-roobert-regular">
+                    {formatDateSafely(expandedThumbnail.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
+                  </span>
+                </div>
+                {expandedThumbnail.tags && expandedThumbnail.tags.length > 0 && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <Tag size={14} className="text-gray-300" />
+                    <div className="flex gap-1 overflow-hidden">
+                      {expandedThumbnail.tags.slice(0, 3).map((tag, tagIndex) => (
+                        <span
+                          key={tagIndex}
+                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                        >
+                          {tag.replace('#', '')}
+                        </span>
+                      ))}
+                      {expandedThumbnail.tags.length > 3 && (
+                        <span className="text-gray-300 font-roobert-regular text-sm">+{expandedThumbnail.tags.length - 3}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Кнопка закрытия */}
+            <button
+              onClick={() => setExpandedThumbnail(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+            >
+              <X size={20} className="text-white" />
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   </div>
   )
 }
