@@ -127,7 +127,7 @@ const getCategoryColor = (categoryId) => {
   }
 }
 
-const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCategories = false, renderOnlyContent = false, selectedCategory: externalSelectedCategory, onCategoryChange, onSearchFocus, apiConnected = false }) => {
+const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCategories = false, renderOnlyContent = false, selectedCategory: externalSelectedCategory, onCategoryChange, onSearchFocus, apiConnected = false, expandedThumbnail: externalExpandedThumbnail, setExpandedThumbnail: externalSetExpandedThumbnail }) => {
   const [internalSelectedCategory, setInternalSelectedCategory] = useState('all')
   
   // Используем внешнее состояние, если передано, иначе внутреннее
@@ -138,8 +138,10 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
   const [searchQuery, setSearchQuery] = useState('')
   const { hapticFeedback } = useTelegram()
 
-  // Состояние для увеличенного превью
-  const [expandedThumbnail, setExpandedThumbnail] = useState(null)
+  // Используем внешнее состояние для увеличенного превью, если передано
+  const [internalExpandedThumbnail, setInternalExpandedThumbnail] = useState(null)
+  const expandedThumbnail = externalExpandedThumbnail !== undefined ? externalExpandedThumbnail : internalExpandedThumbnail
+  const setExpandedThumbnail = externalSetExpandedThumbnail || setInternalExpandedThumbnail
   const [isHolding, setIsHolding] = useState(false)
 
   // Создаем ref для контейнера контента
@@ -1004,78 +1006,80 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
       )}
     </div>
 
-    {/* Модальное окно с увеличенным превью */}
-    <AnimatePresence>
-      {expandedThumbnail && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setExpandedThumbnail(null)}
-        >
+    {/* Модальное окно с увеличенным превью - показываем только в renderOnlyContent */}
+    {renderOnlyContent && (
+      <AnimatePresence>
+        {expandedThumbnail && (
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="relative max-w-[90vw] max-h-[80vh] rounded-lg overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setExpandedThumbnail(null)}
           >
-            {/* Увеличенное превью */}
-            <div className="relative">
-              {expandedThumbnail.thumbnail ? (
-                <ThumbnailImage thumbnail={expandedThumbnail.thumbnail} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-800 min-h-[300px]">
-                  <Play size={48} className="text-gray-400" />
-                </div>
-              )}
-              
-              {/* Информация о стриме */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                <h3 className="text-white font-roobert-medium text-lg mb-2">
-                  {expandedThumbnail.title}
-                </h3>
-                <div className="flex items-center gap-2 text-sm text-gray-300 mb-2">
-                  <Calendar size={16} />
-                  <span className="font-roobert-regular">
-                    {formatDateSafely(expandedThumbnail.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
-                  </span>
-                </div>
-                {expandedThumbnail.tags && expandedThumbnail.tags.length > 0 && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <Tag size={14} className="text-gray-300" />
-                    <div className="flex gap-1 overflow-hidden">
-                      {expandedThumbnail.tags.slice(0, 3).map((tag, tagIndex) => (
-                        <span
-                          key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
-                        >
-                          {tag.replace('#', '')}
-                        </span>
-                      ))}
-                      {expandedThumbnail.tags.length > 3 && (
-                        <span className="text-gray-300 font-roobert-regular text-sm">+{expandedThumbnail.tags.length - 3}</span>
-                      )}
-                    </div>
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="relative max-w-[90vw] max-h-[80vh] rounded-lg overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Увеличенное превью */}
+              <div className="relative">
+                {expandedThumbnail.thumbnail ? (
+                  <ThumbnailImage thumbnail={expandedThumbnail.thumbnail} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-800 min-h-[300px]">
+                    <Play size={48} className="text-gray-400" />
                   </div>
                 )}
+                
+                {/* Информация о стриме */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                  <h3 className="text-white font-roobert-medium text-lg mb-2">
+                    {expandedThumbnail.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-300 mb-2">
+                    <Calendar size={16} />
+                    <span className="font-roobert-regular">
+                      {formatDateSafely(expandedThumbnail.date, 'dd MMM yyyy', { locale: ru }) || 'Неизвестная дата'}
+                    </span>
+                  </div>
+                  {expandedThumbnail.tags && expandedThumbnail.tags.length > 0 && (
+                    <div className="flex items-center gap-1 text-sm">
+                      <Tag size={14} className="text-gray-300" />
+                      <div className="flex gap-1 overflow-hidden">
+                        {expandedThumbnail.tags.slice(0, 3).map((tag, tagIndex) => (
+                          <span
+                            key={tagIndex}
+                            className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                          >
+                            {tag.replace('#', '')}
+                          </span>
+                        ))}
+                        {expandedThumbnail.tags.length > 3 && (
+                          <span className="text-gray-300 font-roobert-regular text-sm">+{expandedThumbnail.tags.length - 3}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            
-            {/* Кнопка закрытия */}
-            <button
-              onClick={() => setExpandedThumbnail(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-            >
-              <X size={20} className="text-white" />
-            </button>
+              
+              {/* Кнопка закрытия */}
+              <button
+                onClick={() => setExpandedThumbnail(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+              >
+                <X size={20} className="text-white" />
+              </button>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    )}
   </div>
   )
 }
