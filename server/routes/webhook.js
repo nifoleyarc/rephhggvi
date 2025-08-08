@@ -2,6 +2,7 @@ import express from 'express'
 import axios from 'axios'
 import { getDatabase } from '../database/init.js'
 import { generateThumbnailFromTelegramUrl } from '../utils/thumbnailGenerator.js'
+import telegrafBot from '../bot/telegrafBot.js' // Импортируем Telegraf бота
 
 const router = express.Router()
 
@@ -64,8 +65,6 @@ const CATEGORY_MAPPING = {
 // Регулярные выражения
 const TAG_REGEX = /#[a-zA-Z0-9а-яёА-ЯЁ_]+/gi // Поддержка всех русских букв + регистр
 const DATE_REGEX = /\b\d{1,2}\.\d{1,2}\.(\d{2}|\d{4})\b/
-
-
 
 // ============================================================================
 // 🖼️ ГЕНЕРАЦИЯ ПРЕВЬЮ
@@ -232,10 +231,16 @@ router.post('/', async (req, res) => {
     console.log('✅ Webhook secret проверен')
     console.log('📋 Тип обновления:', Object.keys(update).join(', '))
     
-    // Игнорируем команды пользователей (их обрабатывает Telegraf)
+    // Обработка команд пользователей через Telegraf
     if (update.message) {
-      console.log('❌ Команды пользователей обрабатывает Telegraf - игнорируем')
-      return res.status(200).json({ ok: true, message: 'User commands handled by Telegraf' })
+      console.log('👤 Обработка команды пользователя через Telegraf...')
+      try {
+        await telegrafBot.handleWebhook(update)
+        console.log('✅ Команда обработана Telegraf')
+      } catch (error) {
+        console.error('❌ Ошибка обработки команды:', error.message)
+      }
+      return res.status(200).json({ ok: true, message: 'User command processed' })
     }
     
     // Обработка постов канала
@@ -340,4 +345,4 @@ router.post('/', async (req, res) => {
   }
 })
 
-export default router 
+export default router

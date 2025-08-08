@@ -19,7 +19,7 @@ class TelegrafBot {
     // Настраиваем команды
     this.setupCommands()
     
-    console.log('🤖 Telegraf бот инициализирован')
+    console.log('🤖 Telegraf бот инициализирован (без polling)')
     console.log(`   Mini App URL: ${this.miniAppUrl}`)
   }
   
@@ -70,7 +70,24 @@ class TelegrafBot {
     })
   }
   
-  // Запуск бота
+  // Обработка webhook'ов вместо polling
+  async handleWebhook(update) {
+    if (!this.bot) {
+      console.error('❌ Бот не инициализирован')
+      return false
+    }
+    
+    try {
+      // Обрабатываем update через Telegraf
+      await this.bot.handleUpdate(update)
+      return true
+    } catch (error) {
+      console.error('❌ Ошибка обработки webhook:', error.message)
+      return false
+    }
+  }
+  
+  // НЕ запускаем polling - он конфликтует с webhook
   async start() {
     if (!this.bot) {
       console.error('❌ Бот не инициализирован')
@@ -78,19 +95,16 @@ class TelegrafBot {
     }
     
     try {
-      console.log('🚀 Запуск Telegraf бота...')
+      console.log('🚀 Подготовка Telegraf бота (webhook режим)...')
       
       // Получаем информацию о боте
       const botInfo = await this.bot.telegram.getMe()
-      console.log(`✅ Бот запущен: @${botInfo.username} (${botInfo.first_name})`)
-      
-      // Запускаем polling
-      await this.bot.launch()
-      console.log('✅ Polling запущен')
+      console.log(`✅ Бот готов: @${botInfo.username} (${botInfo.first_name})`)
+      console.log('ℹ️ Используется webhook режим (polling отключен)')
       
       return true
     } catch (error) {
-      console.error('❌ Ошибка запуска бота:', error.message)
+      console.error('❌ Ошибка подготовки бота:', error.message)
       return false
     }
   }
@@ -128,4 +142,4 @@ class TelegrafBot {
 // Создаем глобальный экземпляр
 const telegrafBot = new TelegrafBot()
 
-export default telegrafBot 
+export default telegrafBot
