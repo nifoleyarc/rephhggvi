@@ -80,7 +80,7 @@ const ThumbnailImage = ({ thumbnail }) => {
 // Функция для получения цвета тега
 const getTagColor = (tag) => {
   // Убираем # и эмодзи для сравнения, приводим к нижнему регистру и убираем лишние пробелы
-  const cleanTag = tag.toLowerCase().replace('#', '').replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim()
+  const cleanTag = tag.toLowerCase().replace('#', '').replace(/[\u{1F1E6}-\u{1F1FF}]{2}|[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]/gu, '').trim()
   
   switch (cleanTag) {
     case 'ирл':
@@ -100,8 +100,6 @@ const getTagColor = (tag) => {
       return 'bg-emerald-500/40 text-emerald-200'
     case 'марафон':
       return 'bg-amber-500/40 text-amber-200'
-    case 'сербия':
-      return 'bg-red-500/40 text-red-200'
     default:
       return 'bg-gray-500/40 text-gray-200'
   }
@@ -666,7 +664,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                       {stream.tags.slice(0, 3).map((tag, tagIndex) => (
                         <span
                           key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                          className={`px-2 py-1 rounded text-sm font-roobert-regular emoji-support ${getTagColor(tag)}`}
                         >
                           {tag.replace('#', '')}
                         </span>
@@ -868,7 +866,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                       {stream.tags.slice(0, 3).map((tag, tagIndex) => (
                         <span
                           key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${getTagColor(tag)}`}
+                          className={`px-2 py-1 rounded text-sm font-roobert-regular emoji-support ${getTagColor(tag)}`}
                         >
                           {tag.replace('#', '')}
                         </span>
