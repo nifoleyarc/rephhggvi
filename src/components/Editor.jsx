@@ -119,13 +119,16 @@ const ThumbnailImage = ({ thumbnail }) => {
 
 // Функция для получения цвета тега
 const getTagColor = (tag) => {
-  const tagLower = tag.toLowerCase().replace('#', '')
-  switch (tagLower) {
+  // Убираем # и эмодзи для сравнения, приводим к нижнему регистру и убираем лишние пробелы
+  const cleanTag = tag.toLowerCase().replace('#', '').replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim()
+  
+  switch (cleanTag) {
     case 'ирл':
       return 'bg-blue-500/40 text-blue-200'
     case 'фильм':
       return 'bg-purple-500/40 text-purple-200'
     case 'just_chatting':
+    case 'just chatting':
       return 'bg-blue-500/40 text-blue-200'
     case 'игры':
       return 'bg-red-500/40 text-red-200'
@@ -137,6 +140,8 @@ const getTagColor = (tag) => {
       return 'bg-emerald-500/40 text-emerald-200'
     case 'марафон':
       return 'bg-amber-500/40 text-amber-200'
+    case 'сербия':
+      return 'bg-red-500/40 text-red-200'
     default:
       return 'bg-gray-500/40 text-gray-200'
   }
@@ -292,7 +297,7 @@ const AddStreamForm = ({ onAdd, categories, showToast, hapticFeedback }) => {
                   value={formData.tags}
                   onChange={(e) => setFormData({...formData, tags: e.target.value})}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="игры, контент, ирл"
+                  placeholder="игры, контент, 🎬 фильмы, just chatting"
                 />
               </div>
 
