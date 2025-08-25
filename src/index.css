@@ -50,6 +50,9 @@
   .emoji-support {
     font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Roobert PRO', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-emoji: emoji;
+    font-feature-settings: "kern" off;
+    letter-spacing: -0.02em;
+    word-spacing: -0.1em;
   }
 }
 

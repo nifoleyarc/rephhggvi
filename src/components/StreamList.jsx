@@ -77,6 +77,8 @@ const ThumbnailImage = ({ thumbnail }) => {
   )
 }
 
+
+
 // Функция для получения цвета тега
 const getTagColor = (tag) => {
   // Убираем # и эмодзи для сравнения, приводим к нижнему регистру и убираем лишние пробелы
@@ -666,7 +668,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                           key={tagIndex}
                           className={`px-2 py-1 rounded text-sm font-roobert-regular emoji-support ${getTagColor(tag)}`}
                         >
-                          {tag.replace('#', '')}
+                          {addCountryFlag(tag)}
                         </span>
                       ))}
                       {stream.tags.length > 3 && (
@@ -868,7 +870,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                           key={tagIndex}
                           className={`px-2 py-1 rounded text-sm font-roobert-regular emoji-support ${getTagColor(tag)}`}
                         >
-                          {tag.replace('#', '')}
+                          {addCountryFlag(tag)}
                         </span>
                       ))}
                       {stream.tags.length > 3 && (

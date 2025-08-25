@@ -117,6 +117,8 @@ const ThumbnailImage = ({ thumbnail }) => {
   )
 }
 
+
+
 // Функция для получения цвета тега
 const getTagColor = (tag) => {
   // Убираем # и эмодзи для сравнения, приводим к нижнему регистру и убираем лишние пробелы
@@ -583,7 +585,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
                 key={index}
                 className={`px-2 py-1 rounded-full text-xs font-medium emoji-support ${getTagColor(tag)}`}
               >
-                {tag}
+                {addCountryFlag(tag)}
               </span>
             ))}
           </div>
