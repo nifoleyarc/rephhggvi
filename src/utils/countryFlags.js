@@ -148,8 +148,14 @@ export const addCountryFlag = (tag) => {
   const flag = countryFlags[cleanTag]
   
   if (flag && !tag.includes(flag)) {
-    return `${flag} ${tag.replace('#', '')}`
+    return `${flag}${tag.replace('#', '')}`
   }
   
   return tag.replace('#', '')
+}
+
+// Функция для проверки, содержит ли тег флаг страны
+export const hasCountryFlag = (tag) => {
+  const cleanTag = tag.toLowerCase().replace('#', '').trim()
+  return !!countryFlags[cleanTag]
 }

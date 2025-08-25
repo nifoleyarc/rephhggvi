@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { Play, Calendar, Tag, Search, X } from 'lucide-react'
 import { useTelegram } from '../hooks/useTelegram'
-import { addCountryFlag } from '../utils/countryFlags'
+import { addCountryFlag, hasCountryFlag } from '../utils/countryFlags'
 
 // Утилита для безопасной обработки дат
 const formatDateSafely = (dateString, formatStr, options = {}) => {
@@ -667,7 +667,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                       {stream.tags.slice(0, 3).map((tag, tagIndex) => (
                         <span
                           key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular emoji-support ${getTagColor(tag)}`}
+                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${hasCountryFlag(tag) ? 'country-flag-tag' : 'emoji-support'} ${getTagColor(tag)}`}
                         >
                           {addCountryFlag(tag)}
                         </span>
@@ -869,7 +869,7 @@ const StreamList = ({ streams, categories, loading, onStreamClick, renderOnlyCat
                       {stream.tags.slice(0, 3).map((tag, tagIndex) => (
                         <span
                           key={tagIndex}
-                          className={`px-2 py-1 rounded text-sm font-roobert-regular emoji-support ${getTagColor(tag)}`}
+                          className={`px-2 py-1 rounded text-sm font-roobert-regular ${hasCountryFlag(tag) ? 'country-flag-tag' : 'emoji-support'} ${getTagColor(tag)}`}
                         >
                           {addCountryFlag(tag)}
                         </span>

@@ -7,7 +7,7 @@ import { useTelegram } from '../hooks/useTelegram'
 import { useStreams } from '../hooks/useStreams'
 import { API_CONFIG } from '../utils/api'
 import axios from 'axios'
-import { addCountryFlag } from '../utils/countryFlags'
+import { addCountryFlag, hasCountryFlag } from '../utils/countryFlags'
 
 // Утилита для безопасной обработки дат
 const formatDateSafely = (dateString, formatStr, options = {}) => {
@@ -584,7 +584,7 @@ const StreamCard = ({ stream, isEditing, onEdit, onCancelEdit, onSave, onDelete,
             {stream.tags.map((tag, index) => (
               <span
                 key={index}
-                className={`px-2 py-1 rounded-full text-xs font-medium emoji-support ${getTagColor(tag)}`}
+                className={`px-2 py-1 rounded-full text-xs font-medium ${hasCountryFlag(tag) ? 'country-flag-tag' : 'emoji-support'} ${getTagColor(tag)}`}
               >
                 {addCountryFlag(tag)}
               </span>

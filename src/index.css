@@ -51,8 +51,24 @@
     font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Roobert PRO', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-emoji: emoji;
     font-feature-settings: "kern" off;
-    letter-spacing: -0.02em;
-    word-spacing: -0.1em;
+    letter-spacing: normal;
+    word-spacing: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  /* Исправление пробелов для флагов стран */
+  .country-flag-tag {
+    font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Roobert PRO', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-variant-emoji: emoji;
+    font-feature-settings: "kern" off, "liga" off;
+    letter-spacing: -0.1em;
+    word-spacing: -0.3em;
+    display: inline-block;
+    white-space: nowrap;
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
