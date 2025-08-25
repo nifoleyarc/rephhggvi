@@ -60,7 +60,6 @@
   
   /* Исправление пробелов для флагов стран */
   .country-flag-tag {
-    letter-spacing: -0.05em;
     word-spacing: -0.15em;
     display: inline-block;
     white-space: nowrap;
