@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { Play, Calendar, Tag, Search, X } from 'lucide-react'
 import { useTelegram } from '../hooks/useTelegram'
+import { addCountryFlag } from '../utils/countryFlags'
 
 // Утилита для безопасной обработки дат
 const formatDateSafely = (dateString, formatStr, options = {}) => {

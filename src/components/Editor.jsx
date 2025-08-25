@@ -7,6 +7,7 @@ import { useTelegram } from '../hooks/useTelegram'
 import { useStreams } from '../hooks/useStreams'
 import { API_CONFIG } from '../utils/api'
 import axios from 'axios'
+import { addCountryFlag } from '../utils/countryFlags'
 
 // Утилита для безопасной обработки дат
 const formatDateSafely = (dateString, formatStr, options = {}) => {
