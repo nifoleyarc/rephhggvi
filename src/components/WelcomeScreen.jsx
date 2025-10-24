@@ -184,9 +184,57 @@ ${category.glowColor}
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Кнопка поддержки */}
+        <motion.div
+          className="mt-8 max-w-md mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
+          <motion.a
+            href="https://dalink.to/nikothan"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => hapticFeedback('impact', 'light')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="group block w-full"
+          >
+            <div className="relative overflow-hidden rounded-xl p-4 
+                          bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-blue-500/20
+                          border border-gray-700/50 group-hover:border-pink-500/50
+                          backdrop-blur-sm
+                          transition-all duration-300 ease-out
+                          shadow-lg group-hover:shadow-xl group-hover:shadow-pink-500/20">
+              
+              {/* Переливающийся эффект */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent 
+                             transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] 
+                             transition-transform duration-1000 ease-out"></div>
+              
+              {/* Контент */}
+              <div className="relative z-10 flex items-center justify-center gap-3">
+                <img 
+                  src="/da.svg" 
+                  alt="DA" 
+                  className="w-6 h-6 group-hover:scale-110 transition-transform duration-300"
+                />
+                <span className="text-base font-roobert-medium text-tg-text group-hover:text-white transition-colors duration-300">
+                  Поддержать автора
+                </span>
+              </div>
+
+              {/* Эффект свечения при hover */}
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 
+                             bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-blue-500/10 
+                             transition-opacity duration-300"></div>
+            </div>
+          </motion.a>
+        </motion.div>
       </div>
     </div>
   )
 }
 
-export default WelcomeScreen 
+export default WelcomeScreen
