@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { useTelegram } from '../hooks/useTelegram'
+import daLogo from '/da.svg'
 
 const WelcomeScreen = ({ onCategorySelect }) => {
   const { hapticFeedback } = useTelegram()
@@ -216,7 +217,7 @@ ${category.glowColor}
               {/* Контент */}
               <div className="relative z-10 flex items-center justify-center gap-3">
                 <img 
-                  src={`${process.env.PUBLIC_URL}/da.svg`}
+                  src={daLogo}
                   alt="DA" 
                   className="w-6 h-6 group-hover:scale-110 transition-transform duration-300"
                 />
