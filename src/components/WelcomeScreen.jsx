@@ -216,7 +216,7 @@ ${category.glowColor}
               {/* Контент */}
               <div className="relative z-10 flex items-center justify-center gap-3">
                 <img 
-                  src="/da.svg" 
+                  src={`${process.env.PUBLIC_URL}/da.svg`}
                   alt="DA" 
                   className="w-6 h-6 group-hover:scale-110 transition-transform duration-300"
                 />
