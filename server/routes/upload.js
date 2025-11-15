@@ -25,6 +25,7 @@ const PASSWORD_HASH = process.env.IMAGE_UPLOAD_PASSWORD_HASH
 const SESSION_TTL_DAYS = parseInt(process.env.IMAGE_UPLOAD_SESSION_TTL_DAYS || '30', 10)
 const SESSION_TTL_MS = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
 const SESSION_COOKIE_NAME = 'upload_session'
+const SESSION_TEMP_TTL_MS = 24 * 60 * 60 * 1000 // 24 часа для незапомненных
 const sessionStore = new Map()
 
 async function logUpload(event) {
@@ -58,19 +59,20 @@ function getSession(req) {
   return { token, ...session }
 }
 
-function issueSession(res, user = 'uploader') {
+function issueSession(res, { user = 'uploader', remember = false } = {}) {
   const token = crypto.randomBytes(32).toString('hex')
+  const ttl = remember ? SESSION_TTL_MS : SESSION_TEMP_TTL_MS
   sessionStore.set(token, {
     user,
     createdAt: Date.now(),
-    expiresAt: Date.now() + SESSION_TTL_MS
+    expiresAt: Date.now() + ttl
   })
 
   res.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: SESSION_TTL_MS
+    maxAge: ttl
   })
 }
 
@@ -93,7 +95,7 @@ router.post('/login', async (req, res) => {
     if (!PASSWORD_HASH) {
       return res.status(503).json({ error: 'Пароль не настроен (IMAGE_UPLOAD_PASSWORD_HASH)' })
     }
-    const { password } = req.body || {}
+    const { password, remember } = req.body || {}
     if (!password) {
       return res.status(400).json({ error: 'Введите пароль' })
     }
@@ -103,7 +105,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Неверный пароль' })
     }
 
-    issueSession(res)
+    issueSession(res, { remember: Boolean(remember) })
     return res.json({ success: true })
   } catch (error) {
     console.error('Ошибка авторизации загрузчика:', error)
@@ -196,6 +198,10 @@ function renderUploadPage(isAuthenticated = false) {
           Пароль:
           <input type="password" id="passwordInput" class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-600 focus:outline-none focus:border-sky-500" placeholder="••••••••" required />
         </label>
+        <label class="flex items-center gap-2 text-sm text-slate-400">
+          <input type="checkbox" id="rememberInput" class="rounded bg-slate-900/60 border-slate-600">
+          Запомнить на 30 дней
+        </label>
         <button type="submit" class="w-full py-2 rounded-lg bg-sky-500/80 hover:bg-sky-500 text-white font-semibold transition">Войти</button>
       </form>
       <div id="loginError" class="hidden text-sm text-rose-300"></div>
@@ -246,17 +252,6 @@ function renderUploadPage(isAuthenticated = false) {
       </div>
     </div>
 
-    <div id="dropzone" class="dropzone rounded-2xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L7 9m4-4v12" />
-      </svg>
-      <div class="text-center space-y-1">
-        <p class="text-lg font-medium">Перетащите файл сюда</p>
-        <p class="text-sm text-slate-400">или нажмите для выбора</p>
-      </div>
-      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="hidden" />
-    </div>
-
   <script>
     const isAuthenticated = ${isAuthenticated ? 'true' : 'false'}
     const dropzone = document.getElementById('dropzone')
@@ -268,6 +263,7 @@ function renderUploadPage(isAuthenticated = false) {
     const loginForm = document.getElementById('loginForm')
     const loginError = document.getElementById('loginError')
     const logoutBtn = document.getElementById('logoutBtn')
+    const rememberInput = document.getElementById('rememberInput')
 
     function resetUI() {
       statusBox.classList.add('hidden')
@@ -323,25 +319,27 @@ function renderUploadPage(isAuthenticated = false) {
       }
     }
 
-    dropzone.addEventListener('click', () => fileInput.click())
-    fileInput.addEventListener('change', (e) => uploadFile(e.target.files[0]))
+    if (dropzone && fileInput) {
+      dropzone.addEventListener('click', () => fileInput.click())
+      fileInput.addEventListener('change', (e) => uploadFile(e.target.files[0]))
 
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault()
-      dropzone.classList.add('dragover')
-    })
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        dropzone.classList.add('dragover')
+      })
 
-    dropzone.addEventListener('dragleave', () => {
-      dropzone.classList.remove('dragover')
-    })
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover')
+      })
 
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault()
-      dropzone.classList.remove('dragover')
-      if (e.dataTransfer.files.length > 0) {
-        uploadFile(e.dataTransfer.files[0])
-      }
-    })
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault()
+        dropzone.classList.remove('dragover')
+        if (e.dataTransfer.files.length > 0) {
+          uploadFile(e.dataTransfer.files[0])
+        }
+      })
+    }
 
     copyButton?.addEventListener('click', async () => {
       const text = document.getElementById('optimizedUrl').textContent
@@ -367,7 +365,7 @@ function renderUploadPage(isAuthenticated = false) {
         const response = await fetch('/upload/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
+          body: JSON.stringify({ password, remember: rememberInput?.checked })
         })
         const data = await response.json()
         if (!response.ok) {
