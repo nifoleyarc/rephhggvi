@@ -40,6 +40,7 @@ const checkDateMatch = (dateString, query) => {
 
 const ThumbnailImage = ({ thumbnail }) => {
   const [error, setError] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   // Извлекаем URL из объекта или используем строку напрямую (обратная совместимость)
   const thumbnailUrl = typeof thumbnail === 'object' && thumbnail?.url 
@@ -66,15 +67,25 @@ const ThumbnailImage = ({ thumbnail }) => {
   }
 
   return (
-    <img
-      src={thumbnailUrl}
-      alt="Превью стрима"
-      className="w-full h-full object-cover"
-      onError={() => {
-        console.error('Image load error for URL:', thumbnailUrl)
-        setError(true)
-      }}
-    />
+    <div className="relative w-full h-full">
+      {!loaded && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-800/60">
+          <div className="h-8 w-8 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      <img
+        src={thumbnailUrl}
+        alt="Превью стрима"
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onError={() => {
+          console.error('Image load error for URL:', thumbnailUrl)
+          setError(true)
+        }}
+      />
+    </div>
   )
 }
 
