@@ -3,6 +3,9 @@ import path from 'path'
 import crypto from 'crypto'
 import sharp from 'sharp'
 import fetch from 'node-fetch'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const MAX_UPLOAD_SIZE_MB = parseInt(process.env.IMAGE_MAX_UPLOAD_MB || '20', 10)
 export const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
