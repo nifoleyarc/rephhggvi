@@ -32,6 +32,14 @@ const ALLOWED_FORMATS = new Set(
 )
 
 const IMAGE_TIMEOUT_MS = parseInt(process.env.IMAGE_DOWNLOAD_TIMEOUT_MS || '20000', 10)
+const WATERMARK_PATH = path.resolve(
+  process.env.IMAGE_WATERMARK_PATH || path.join(process.cwd(), 'assets', 'watermark.png')
+)
+const WATERMARK_OFFSET_X = parseInt(process.env.IMAGE_WATERMARK_OFFSET_X || '30', 10)
+const WATERMARK_OFFSET_Y = parseInt(process.env.IMAGE_WATERMARK_OFFSET_Y || '1', 10)
+
+let watermarkCache = null
+let watermarkLoadAttempted = false
 
 function normalizePath(rawPath) {
   if (!rawPath) return '/images'
@@ -152,6 +160,62 @@ async function analyzeImage(buffer) {
   }
 }
 
+async function loadWatermark() {
+  if (watermarkCache || watermarkLoadAttempted) {
+    return watermarkCache
+  }
+  watermarkLoadAttempted = true
+  try {
+    await fs.access(WATERMARK_PATH)
+  } catch (error) {
+    watermarkCache = null
+    return null
+  }
+
+  try {
+    const buffer = await fs.readFile(WATERMARK_PATH)
+    const metadata = await sharp(buffer).metadata()
+
+    if (!metadata.width || !metadata.height) {
+      console.warn('⚠️ Watermark image не содержит размеров, пропускаем', WATERMARK_PATH)
+      watermarkCache = null
+      return null
+    }
+
+    watermarkCache = {
+      buffer,
+      width: metadata.width,
+      height: metadata.height
+    }
+    console.log(`🖼️ Watermark загружен (${metadata.width}x${metadata.height}) из ${WATERMARK_PATH}`)
+    return watermarkCache
+  } catch (error) {
+    console.error('❌ Не удалось загрузить watermark:', error.message)
+    watermarkCache = null
+    return null
+  }
+}
+
+async function applyWatermarkIfNeeded(buffer) {
+  const watermark = await loadWatermark()
+  if (!watermark) return buffer
+
+  try {
+    const baseMetadata = await sharp(buffer).metadata()
+    if (!baseMetadata.width || !baseMetadata.height) return buffer
+
+    const left = Math.max(0, baseMetadata.width - watermark.width - WATERMARK_OFFSET_X)
+    const top = Math.max(0, baseMetadata.height - watermark.height - WATERMARK_OFFSET_Y)
+
+    return await sharp(buffer)
+      .composite([{ input: watermark.buffer, left, top }])
+      .toBuffer()
+  } catch (error) {
+    console.error('⚠️ Ошибка применения watermark:', error.message)
+    return buffer
+  }
+}
+
 async function persistBuffer(buffer, { originalName = 'upload', context = {} } = {}) {
   if (!buffer || !Buffer.isBuffer(buffer)) {
     throw new Error('Буфер изображения не передан')
@@ -165,12 +229,13 @@ async function persistBuffer(buffer, { originalName = 'upload', context = {} } =
     throw new Error(`Разрешённый размер превышен (${MAX_UPLOAD_SIZE_MB}MB)`)
   }
 
-  const metadata = await analyzeImage(buffer)
+  const processedBuffer = await applyWatermarkIfNeeded(buffer)
+  const metadata = await analyzeImage(processedBuffer)
   const relativePath = buildRelativePath(metadata.format)
   const absolutePath = resolveStoragePath(relativePath)
 
   await ensureDirectory(absolutePath)
-  await fs.writeFile(absolutePath, buffer)
+  await fs.writeFile(absolutePath, processedBuffer)
 
   console.log(`💾 Изображение сохранено: ${relativePath} (${originalName})`)
 
