@@ -3,6 +3,8 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs/promises'
 import { fileURLToPath } from 'url'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { saveUploadedImage, MAX_UPLOAD_SIZE_BYTES } from '../utils/imageStorage.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -15,17 +17,15 @@ const upload = multer({
   limits: { fileSize: MAX_UPLOAD_SIZE_BYTES }
 })
 
-const BASIC_USER = process.env.IMAGE_UPLOAD_BASIC_USER
-const BASIC_PASS = process.env.IMAGE_UPLOAD_BASIC_PASS
-const BEARER_TOKEN = process.env.IMAGE_UPLOAD_TOKEN
 const DEFAULT_LOG_PATH = process.env.NODE_ENV === 'production'
   ? '/var/log/img-upload.log'
   : path.join(__dirname, '../../logs/img-upload.log')
 const UPLOAD_LOG_PATH = process.env.IMAGE_UPLOAD_LOG || DEFAULT_LOG_PATH
-
-function haveCredentials() {
-  return Boolean((BASIC_USER && BASIC_PASS) || BEARER_TOKEN)
-}
+const PASSWORD_HASH = process.env.IMAGE_UPLOAD_PASSWORD_HASH
+const SESSION_TTL_DAYS = parseInt(process.env.IMAGE_UPLOAD_SESSION_TTL_DAYS || '30', 10)
+const SESSION_TTL_MS = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
+const SESSION_COOKIE_NAME = 'upload_session'
+const sessionStore = new Map()
 
 async function logUpload(event) {
   try {
@@ -36,72 +36,104 @@ async function logUpload(event) {
   }
 }
 
-function parseBasicAuth(header) {
-  try {
-    const base64Credentials = header.split(' ')[1]
-    const decoded = Buffer.from(base64Credentials, 'base64').toString()
-    const separatorIndex = decoded.indexOf(':')
-    if (separatorIndex === -1) return null
-    const username = decoded.slice(0, separatorIndex)
-    const password = decoded.slice(separatorIndex + 1)
-    return { username, password }
-  } catch (error) {
+function cleanupSessions() {
+  const now = Date.now()
+  for (const [token, session] of sessionStore.entries()) {
+    if (session.expiresAt <= now) {
+      sessionStore.delete(token)
+    }
+  }
+}
+
+function getSession(req) {
+  cleanupSessions()
+  const token = req.cookies?.[SESSION_COOKIE_NAME]
+  if (!token) return null
+  const session = sessionStore.get(token)
+  if (!session) return null
+  if (session.expiresAt <= Date.now()) {
+    sessionStore.delete(token)
     return null
   }
+  return { token, ...session }
 }
 
-function unauthorized(res) {
-  res.set('WWW-Authenticate', 'Basic realm="Image Upload", charset="UTF-8"')
-  return res.status(401).send('Unauthorized')
+function issueSession(res, user = 'uploader') {
+  const token = crypto.randomBytes(32).toString('hex')
+  sessionStore.set(token, {
+    user,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS
+  })
+
+  res.cookie(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: SESSION_TTL_MS
+  })
 }
 
-function uploadAuth(req, res, next) {
-  if (!haveCredentials()) {
-    console.error('IMAGE_UPLOAD_* переменные не заданы, доступ к /upload запрещён')
-    return res.status(503).send('Upload panel is not configured')
+function requireSession(req, res, next) {
+  const session = getSession(req)
+  if (!session) {
+    return res.status(401).json({ error: 'Требуется авторизация' })
   }
-
-  const authHeader = req.headers.authorization || ''
-
-  if (authHeader.startsWith('Bearer ') && BEARER_TOKEN) {
-    const token = authHeader.slice(7).trim()
-    if (token === BEARER_TOKEN) {
-      req.uploadAuthUser = 'token'
-      return next()
-    }
-    return unauthorized(res)
-  }
-
-  if (authHeader.startsWith('Basic ') && BASIC_USER && BASIC_PASS) {
-    const credentials = parseBasicAuth(authHeader)
-    if (credentials && credentials.username === BASIC_USER && credentials.password === BASIC_PASS) {
-      req.uploadAuthUser = credentials.username
-      return next()
-    }
-    return unauthorized(res)
-  }
-
-  return unauthorized(res)
+  req.uploadSession = session
+  return next()
 }
 
-router.get('/', uploadAuth, (req, res) => {
-  res.type('html').send(renderUploadPage())
+router.get('/', (req, res) => {
+  const session = getSession(req)
+  res.type('html').send(renderUploadPage(Boolean(session)))
 })
 
-router.post('/', uploadAuth, upload.single('file'), async (req, res) => {
+router.post('/login', async (req, res) => {
+  try {
+    if (!PASSWORD_HASH) {
+      return res.status(503).json({ error: 'Пароль не настроен (IMAGE_UPLOAD_PASSWORD_HASH)' })
+    }
+    const { password } = req.body || {}
+    if (!password) {
+      return res.status(400).json({ error: 'Введите пароль' })
+    }
+
+    const match = await bcrypt.compare(password, PASSWORD_HASH)
+    if (!match) {
+      return res.status(401).json({ error: 'Неверный пароль' })
+    }
+
+    issueSession(res)
+    return res.json({ success: true })
+  } catch (error) {
+    console.error('Ошибка авторизации загрузчика:', error)
+    return res.status(500).json({ error: 'Ошибка сервера' })
+  }
+})
+
+router.post('/logout', (req, res) => {
+  const session = getSession(req)
+  if (session) {
+    sessionStore.delete(session.token)
+  }
+  res.clearCookie(SESSION_COOKIE_NAME)
+  return res.json({ success: true })
+})
+
+router.post('/', requireSession, upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Файл не передан' })
   }
 
   try {
     const stored = await saveUploadedImage(req.file.buffer, req.file.originalname, {
-      uploader: req.uploadAuthUser || 'unknown',
+      uploader: req.uploadSession?.user || 'unknown',
       via: 'manual-panel'
     })
 
     await logUpload({
       at: new Date().toISOString(),
-      user: req.uploadAuthUser || 'unknown',
+      user: req.uploadSession?.user || 'unknown',
       filename: req.file.originalname,
       bytes: req.file.size,
       publicId: stored.publicId,
@@ -126,7 +158,7 @@ router.post('/', uploadAuth, upload.single('file'), async (req, res) => {
   }
 })
 
-function renderUploadPage() {
+function renderUploadPage(isAuthenticated = false) {
   const maxSizeMb = (MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)).toFixed(0)
   const cdnBase = process.env.IMAGE_CDN_BASE_URL || 'https://img.example.com'
   const defaultExample = `${cdnBase}/cdn/resize?width=640&url=${cdnBase}/images/YYYY/MM/DD/<file>`
@@ -156,6 +188,64 @@ function renderUploadPage() {
       </p>
     </header>
 
+    <div id="login-card" class="result-card rounded-2xl p-6 space-y-4 ${isAuthenticated ? 'hidden' : ''}">
+      <h2 class="text-xl font-semibold">Вход</h2>
+      <p class="text-slate-400 text-sm">Введите пароль администратора, чтобы получить доступ к загрузке изображений.</p>
+      <form id="loginForm" class="space-y-3">
+        <label class="block text-sm text-slate-300">
+          Пароль:
+          <input type="password" id="passwordInput" class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-600 focus:outline-none focus:border-sky-500" placeholder="••••••••" required />
+        </label>
+        <button type="submit" class="w-full py-2 rounded-lg bg-sky-500/80 hover:bg-sky-500 text-white font-semibold transition">Войти</button>
+      </form>
+      <div id="loginError" class="hidden text-sm text-rose-300"></div>
+    </div>
+
+    <div id="uploader-card" class="${isAuthenticated ? '' : 'hidden'} space-y-6">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-emerald-300 font-medium">Авторизация успешна</div>
+        <button id="logoutBtn" class="text-sm px-3 py-1 rounded-full bg-slate-700/60 text-slate-200 hover:bg-slate-600 transition">Выйти</button>
+      </div>
+
+      <div id="dropzone" class="dropzone rounded-2xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L7 9m4-4v12" />
+        </svg>
+        <div class="text-center space-y-1">
+          <p class="text-lg font-medium">Перетащите файл сюда</p>
+          <p class="text-sm text-slate-400">или нажмите для выбора</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="hidden" />
+      </div>
+
+      <div id="status" class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 rounded-xl px-4 py-3 text-sm"></div>
+      <div id="error" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-200 rounded-xl px-4 py-3 text-sm"></div>
+
+      <div id="result" class="hidden result-card rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold">Готово ✨</h2>
+          <button id="copyOptimized" class="text-sm px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition">Скопировать ссылку</button>
+        </div>
+        <div class="space-y-2">
+          <p class="text-sm text-slate-400 uppercase tracking-widest">Оригинал</p>
+          <code id="originalUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
+        </div>
+        <div class="space-y-2">
+          <p class="text-sm text-slate-400 uppercase tracking-widest">Оптимизация</p>
+          <code id="optimizedUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
+        </div>
+        <details class="bg-slate-900/40 rounded-lg p-4">
+          <summary class="cursor-pointer text-sm text-slate-300">Дополнительные варианты</summary>
+          <div class="mt-3 space-y-2 text-sm">
+            <div><span class="text-slate-400 uppercase text-xs">Preview:</span> <code id="variantPreview" class="break-all block"></code></div>
+            <div><span class="text-slate-400 uppercase text-xs">Card:</span> <code id="variantCard" class="break-all block"></code></div>
+            <div><span class="text-slate-400 uppercase text-xs">Full:</span> <code id="variantFull" class="break-all block"></code></div>
+          </div>
+        </details>
+        <p class="text-xs text-slate-500">Пример ссылки для вставки: <code>${defaultExample}</code></p>
+      </div>
+    </div>
+
     <div id="dropzone" class="dropzone rounded-2xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L7 9m4-4v12" />
@@ -167,41 +257,17 @@ function renderUploadPage() {
       <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="hidden" />
     </div>
 
-    <div id="status" class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 rounded-xl px-4 py-3 text-sm"></div>
-    <div id="error" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-200 rounded-xl px-4 py-3 text-sm"></div>
-
-    <div id="result" class="hidden result-card rounded-2xl p-6 space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Готово ✨</h2>
-        <button id="copyOptimized" class="text-sm px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition">Скопировать ссылку</button>
-      </div>
-      <div class="space-y-2">
-        <p class="text-sm text-slate-400 uppercase tracking-widest">Оригинал</p>
-        <code id="originalUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
-      </div>
-      <div class="space-y-2">
-        <p class="text-sm text-slate-400 uppercase tracking-widest">Оптимизация</p>
-        <code id="optimizedUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
-      </div>
-      <details class="bg-slate-900/40 rounded-lg p-4">
-        <summary class="cursor-pointer text-sm text-slate-300">Дополнительные варианты</summary>
-        <div class="mt-3 space-y-2 text-sm">
-          <div><span class="text-slate-400 uppercase text-xs">Preview:</span> <code id="variantPreview" class="break-all block"></code></div>
-          <div><span class="text-slate-400 uppercase text-xs">Card:</span> <code id="variantCard" class="break-all block"></code></div>
-          <div><span class="text-slate-400 uppercase text-xs">Full:</span> <code id="variantFull" class="break-all block"></code></div>
-        </div>
-      </details>
-      <p class="text-xs text-slate-500">Пример ссылки для вставки: <code>${defaultExample}</code></p>
-    </div>
-  </div>
-
   <script>
+    const isAuthenticated = ${isAuthenticated ? 'true' : 'false'}
     const dropzone = document.getElementById('dropzone')
     const fileInput = document.getElementById('fileInput')
     const statusBox = document.getElementById('status')
     const errorBox = document.getElementById('error')
     const resultBox = document.getElementById('result')
     const copyButton = document.getElementById('copyOptimized')
+    const loginForm = document.getElementById('loginForm')
+    const loginError = document.getElementById('loginError')
+    const logoutBtn = document.getElementById('logoutBtn')
 
     function resetUI() {
       statusBox.classList.add('hidden')
@@ -277,7 +343,7 @@ function renderUploadPage() {
       }
     })
 
-    copyButton.addEventListener('click', async () => {
+    copyButton?.addEventListener('click', async () => {
       const text = document.getElementById('optimizedUrl').textContent
       try {
         await navigator.clipboard.writeText(text)
@@ -286,6 +352,37 @@ function renderUploadPage() {
       } catch (error) {
         console.error('Clipboard error', error)
       }
+    })
+
+    loginForm?.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      loginError.classList.add('hidden')
+      const password = document.getElementById('passwordInput').value.trim()
+      if (!password) {
+        loginError.textContent = 'Введите пароль'
+        loginError.classList.remove('hidden')
+        return
+      }
+      try {
+        const response = await fetch('/upload/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Ошибка авторизации')
+        }
+        window.location.reload()
+      } catch (error) {
+        loginError.textContent = error.message
+        loginError.classList.remove('hidden')
+      }
+    })
+
+    logoutBtn?.addEventListener('click', async () => {
+      await fetch('/upload/logout', { method: 'POST' })
+      window.location.reload()
     })
   </script>
 </body>
