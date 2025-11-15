@@ -1,6 +1,6 @@
 import express from 'express'
 import { getDatabase } from '../database/init.js'
-import { updateThumbnail, normalizeThumbnailData } from '../utils/thumbnailGenerator.js'
+import { updateThumbnail } from '../utils/thumbnailGenerator.js'
 
 const router = express.Router()
 
@@ -31,7 +31,7 @@ router.post('/refresh-thumbnail', async (req, res) => {
     // Нормализуем текущее превью для обратной совместимости
     const currentThumbnail = stream.thumbnail_url ? {
       url: stream.thumbnail_url,
-      s3Key: stream.thumbnail_s3_key,
+      publicId: stream.thumbnail_public_id,
       source: stream.thumbnail_source
     } : null
     
@@ -42,13 +42,13 @@ router.post('/refresh-thumbnail', async (req, res) => {
       // Обновляем стрим с новым thumbnail
       await db.run(`
         UPDATE streams SET 
-          thumbnail_url = ?, thumbnail_source = ?, thumbnail_s3_key = ?,
+          thumbnail_url = ?, thumbnail_source = ?, thumbnail_public_id = ?,
           thumbnail_updated_at = ?, updated_at = datetime('now')
         WHERE id = ?
       `, [
         newThumbnail.url,
         newThumbnail.source,
-        newThumbnail.s3Key || null,
+        newThumbnail.publicId || null,
         new Date().toISOString(),
         streamId
       ])
@@ -70,7 +70,7 @@ router.post('/refresh-thumbnail', async (req, res) => {
       // Очищаем старый thumbnail если он был
       await db.run(`
         UPDATE streams SET 
-          thumbnail_url = NULL, thumbnail_source = NULL, thumbnail_s3_key = NULL,
+          thumbnail_url = NULL, thumbnail_source = NULL, thumbnail_public_id = NULL,
           thumbnail_updated_at = ?, updated_at = datetime('now')
         WHERE id = ?
       `, [new Date().toISOString(), streamId])
@@ -124,7 +124,7 @@ router.post('/refresh-thumbnails', async (req, res) => {
         // Нормализуем текущее превью для обратной совместимости
         const currentThumbnail = stream.thumbnail_url ? {
           url: stream.thumbnail_url,
-          s3Key: stream.thumbnail_s3_key,
+          publicId: stream.thumbnail_public_id,
           source: stream.thumbnail_source
         } : null
         
@@ -135,13 +135,13 @@ router.post('/refresh-thumbnails', async (req, res) => {
           // Обновляем стрим с новым thumbnail
           await db.run(`
             UPDATE streams SET 
-              thumbnail_url = ?, thumbnail_source = ?, thumbnail_s3_key = ?,
+              thumbnail_url = ?, thumbnail_source = ?, thumbnail_public_id = ?,
               thumbnail_updated_at = ?, updated_at = datetime('now')
             WHERE id = ?
           `, [
             newThumbnail.url,
             newThumbnail.source,
-            newThumbnail.s3Key || null,
+            newThumbnail.publicId || null,
             new Date().toISOString(),
             stream.id
           ])
@@ -153,7 +153,7 @@ router.post('/refresh-thumbnails', async (req, res) => {
           // Очищаем старый thumbnail если он был
           await db.run(`
             UPDATE streams SET 
-              thumbnail_url = NULL, thumbnail_source = NULL, thumbnail_s3_key = NULL,
+              thumbnail_url = NULL, thumbnail_source = NULL, thumbnail_public_id = NULL,
               thumbnail_updated_at = ?, updated_at = datetime('now')
             WHERE id = ?
           `, [new Date().toISOString(), stream.id])

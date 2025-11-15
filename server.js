@@ -13,6 +13,7 @@ import streamsRoutes from './server/routes/streams.js'
 import categoriesRoutes from './server/routes/categories.js'
 import webhookRoutes from './server/routes/webhook.js'
 import thumbnailRoutes from './server/routes/thumbnails.js'
+import uploadRoutes from './server/routes/upload.js'
 
 // Импортируем middleware для защиты
 import { requireAuth, requireReadAuth, requireDataAccess, logAuth } from './server/middleware/auth.js'
@@ -26,6 +27,11 @@ const __dirname = path.dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 3000
+const imageStorageRoot = process.env.IMAGE_STORAGE_ROOT || path.join(process.cwd(), 'storage', 'images')
+const imagePublicPath = (() => {
+  const raw = process.env.IMAGE_PUBLIC_PATH || '/images'
+  return raw.startsWith('/') ? raw : `/${raw}`
+})()
 
 // Middleware
 app.use(cors({
@@ -55,6 +61,12 @@ app.use('/api/categories', rateLimit, requireReadAuth, logAuth, categoriesRoutes
 app.use('/api/webhook', webhookRoutes) // Webhook не защищаем, так как он от Telegram (для постов канала)
 app.use('/api/refresh-thumbnail', rateLimit, requireAuth, logAuth, thumbnailRoutes) // Полная защита
 app.use('/api/refresh-thumbnails', rateLimit, requireAuth, logAuth, thumbnailRoutes)
+app.use('/upload', uploadRoutes)
+
+if (process.env.NODE_ENV !== 'production') {
+  app.use(imagePublicPath, express.static(imageStorageRoot))
+  console.log(`🗂️ Dev static images enabled: ${imagePublicPath} → ${imageStorageRoot}`)
+}
 
 // Убираем раздачу статических файлов, так как frontend на GitHub Pages
 // app.use(express.static(path.join(__dirname, 'dist')))

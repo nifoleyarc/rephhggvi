@@ -1,8 +1,10 @@
 import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-  checkCloudinaryConfig
-} from './cloudinary.js'
+  saveRemoteImage,
+  deleteStoredImage,
+  checkImageStorageConfig,
+  extractRelativePathFromUrl,
+  buildThumbnailFromPublicId
+} from './imageStorage.js'
 
 /**
  * Генерирует превью для стрима из Telegram URL
@@ -12,114 +14,55 @@ import {
  */
 export async function generateThumbnailFromTelegramUrl(telegramUrl, retries = 3) {
   console.log(`🖼️ Генерация превью для: ${telegramUrl}`)
-  
-  // Проверяем настройки Cloudinary
-  if (!checkCloudinaryConfig()) {
-    console.error('❌ Cloudinary не настроен, используем fallback метод')
-    return await generateThumbnailFallback(telegramUrl, retries)
+
+  const storageStatus = checkImageStorageConfig()
+  if (!storageStatus.ok) {
+    console.error('❌ Хранилище изображений не настроено:', storageStatus.missing.join(', '))
+    return null
   }
-  
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`   🔄 Попытка ${attempt}/${retries}`)
-      
-      // Добавляем небольшую задержку перед попыткой (кроме первой)
+
       if (attempt > 1) {
         const delay = 1000 * attempt
         console.log(`   ⏳ Задержка ${delay}мс`)
         await new Promise(resolve => setTimeout(resolve, delay))
       }
-      
-      // Получаем HTML страницы Telegram
+
       const imageUrl = await extractImageFromTelegramUrl(telegramUrl)
-      
+
       if (!imageUrl) {
-        console.log(`   ⚠️ Изображение не найдено в попытке ${attempt}`)
+        console.log(`   ⚠️ Изображение не найдено (попытка ${attempt})`)
         if (attempt === retries) return null
         continue
       }
-      
-      console.log(`   ✅ Найдено изображение: ${imageUrl}`)
-      
-      // Загружаем изображение в Cloudinary
-      const cloudinaryResult = await uploadToCloudinary(imageUrl, {
-        context: {
-          source: 'telegram',
-          'original-telegram-url': telegramUrl,
-          'generated-at': new Date().toISOString()
-        }
-      })
-      
-      if (cloudinaryResult) {
-        console.log(`   🎉 Превью успешно создано и загружено в Cloudinary`)
-        return {
-          url: cloudinaryResult.url,
-          publicId: cloudinaryResult.publicId,
-          source: 'cloudinary',
-          originalUrl: imageUrl,
-          telegramUrl: telegramUrl,
-          width: cloudinaryResult.width,
-          height: cloudinaryResult.height,
-          format: cloudinaryResult.format,
-          bytes: cloudinaryResult.bytes,
-          createdAt: new Date()
-        }
-      } else {
-        console.log(`   ❌ Не удалось загрузить в Cloudinary, попытка ${attempt}`)
-        if (attempt === retries) {
-          console.log(`   🔄 Используем fallback метод`)
-          return await generateThumbnailFallback(telegramUrl, 1) // Одна попытка fallback
-        }
-      }
-      
-    } catch (error) {
-      console.error(`   ❌ Ошибка в попытке ${attempt}: ${error.message}`)
-      if (attempt === retries) {
-        console.log(`   🔄 Используем fallback метод после всех неудач`)
-        return await generateThumbnailFallback(telegramUrl, 1) // Одна попытка fallback
-      }
-    }
-  }
-  
-  return null
-}
 
-/**
- * Fallback метод - возвращает прямую ссылку на изображение (как было раньше)
- * @param {string} telegramUrl - URL поста в Telegram
- * @param {number} retries - Количество попыток
- * @returns {Promise<object|null>} - Объект с данными о превью или null
- */
-async function generateThumbnailFallback(telegramUrl, retries = 3) {
-  console.log(`🔄 Fallback генерация превью для: ${telegramUrl}`)
-  
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      console.log(`   🔄 Fallback попытка ${attempt}/${retries}`)
-      
-      if (attempt > 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      console.log(`   ✅ Найдено изображение: ${imageUrl}`)
+
+      const storedThumbnail = await saveRemoteImage(imageUrl, {
+        reason: 'telegram-preview',
+        telegramUrl,
+        attempt
+      })
+
+      console.log('   🎉 Превью сохранено локально')
+      return {
+        ...storedThumbnail,
+        telegramUrl,
+        originalUrl: storedThumbnail.originalUrl,
+        source: 'local',
+        createdAt: new Date()
       }
-      
-      const imageUrl = await extractImageFromTelegramUrl(telegramUrl)
-      
-      if (imageUrl) {
-        console.log(`   ✅ Fallback превью найдено: ${imageUrl}`)
-        return {
-          url: imageUrl,
-          source: 'telegram_direct',
-          originalUrl: imageUrl,
-          telegramUrl: telegramUrl,
-          createdAt: new Date()
-        }
-      }
-      
     } catch (error) {
-      console.error(`   ❌ Fallback ошибка в попытке ${attempt}: ${error.message}`)
+      console.error(`   ❌ Ошибка генерации превью (попытка ${attempt}): ${error.message}`)
+      if (attempt === retries) {
+        return null
+      }
     }
   }
-  
-  console.log(`   💥 Все попытки неудачны`)
+
   return null
 }
 
@@ -199,13 +142,15 @@ async function extractImageFromTelegramUrl(telegramUrl) {
 export async function updateThumbnail(telegramUrl, currentThumbnail = null) {
   console.log(`🔄 Обновление превью для: ${telegramUrl}`)
   
-  // Если есть старое превью в Cloudinary, удаляем его
-  if (currentThumbnail?.publicId && currentThumbnail?.source === 'cloudinary') {
-    console.log(`   🗑️ Удаляем старое превью из Cloudinary: ${currentThumbnail.publicId}`)
-    await deleteFromCloudinary(currentThumbnail.publicId)
+  if (currentThumbnail?.publicId) {
+    if (currentThumbnail.source === 'local') {
+      console.log(`   🗑️ Удаляем локальный файл превью: ${currentThumbnail.publicId}`)
+      await deleteStoredImage(currentThumbnail.publicId)
+    } else {
+      console.log(`   ⚠️ Старое превью (${currentThumbnail.source}) не поддерживается, удаление пропущено`)
+    }
   }
   
-  // Генерируем новое превью
   return await generateThumbnailFromTelegramUrl(telegramUrl)
 }
 
@@ -214,20 +159,34 @@ export async function updateThumbnail(telegramUrl, currentThumbnail = null) {
  * @param {string|object} thumbnailData - Данные превью
  * @returns {object} - Нормализованные данные превью
  */
-export function normalizeThumbnailData(thumbnailData) {
-  // Если это уже объект - возвращаем как есть
-  if (typeof thumbnailData === 'object' && thumbnailData !== null) {
+export async function normalizeThumbnailData(thumbnailData) {
+  if (!thumbnailData) return null
+
+  if (typeof thumbnailData === 'object') {
+    if (thumbnailData.publicId) {
+      return buildThumbnailFromPublicId(thumbnailData.publicId, thumbnailData)
+    }
+
+    if (thumbnailData.url && /^https?:\/\//.test(thumbnailData.url)) {
+      return await saveRemoteImage(thumbnailData.url, { reason: 'manual-import-object' })
+    }
+
     return thumbnailData
   }
-  
-  // Если это строка URL - конвертируем в объект
+
   if (typeof thumbnailData === 'string') {
-    return {
-      url: thumbnailData,
-      source: 'telegram_direct', // Старый формат
-      originalUrl: thumbnailData
+    const trimmed = thumbnailData.trim()
+    if (!trimmed) return null
+
+    const relativePath = extractRelativePathFromUrl(trimmed)
+    if (relativePath) {
+      return buildThumbnailFromPublicId(relativePath, { url: trimmed })
+    }
+
+    if (/^https?:\/\//.test(trimmed)) {
+      return await saveRemoteImage(trimmed, { reason: 'manual-import-string' })
     }
   }
-  
+
   return null
 } 

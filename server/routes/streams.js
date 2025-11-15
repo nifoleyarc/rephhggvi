@@ -1,7 +1,7 @@
 import express from 'express'
 import { getDatabase } from '../database/init.js'
 import { generateThumbnailFromTelegramUrl, normalizeThumbnailData, updateThumbnail } from '../utils/thumbnailGenerator.js'
-import { deleteFromCloudinary } from '../utils/cloudinary.js'
+import { enrichThumbnailFromRow, deleteStoredImage } from '../utils/imageStorage.js'
 
 const router = express.Router()
 
@@ -33,15 +33,7 @@ router.get('/', async (req, res) => {
       ...stream,
       tags: stream.tags ? JSON.parse(stream.tags) : [],
       categories: stream.categories ? JSON.parse(stream.categories) : [],
-      thumbnail: stream.thumbnail_url ? {
-        url: stream.thumbnail_url,
-        publicId: stream.thumbnail_public_id,
-        source: stream.thumbnail_source || 'unknown',
-        width: stream.thumbnail_width,
-        height: stream.thumbnail_height,
-        format: stream.thumbnail_format,
-        bytes: stream.thumbnail_bytes,
-      } : null
+      thumbnail: enrichThumbnailFromRow(stream)
     }))
 
     console.log('Returning streams count:', processedStreams.length)
@@ -90,7 +82,7 @@ router.post('/', async (req, res) => {
 
     // Если передан thumbnail URL вручную, нормализуем его
     if (streamData.thumbnail) {
-      thumbnailData = normalizeThumbnailData(streamData.thumbnail)
+      thumbnailData = await normalizeThumbnailData(streamData.thumbnail)
     }
     // Если нет ручного превью, но есть telegramUrl - генерируем
     else if (streamData.telegramUrl) {
@@ -138,15 +130,7 @@ router.post('/', async (req, res) => {
       ...insertedStream,
       tags: insertedStream.tags ? JSON.parse(insertedStream.tags) : [],
       categories: insertedStream.categories ? JSON.parse(insertedStream.categories) : [],
-      thumbnail: insertedStream.thumbnail_url ? {
-        url: insertedStream.thumbnail_url,
-        publicId: insertedStream.thumbnail_public_id,
-        source: insertedStream.thumbnail_source,
-        width: insertedStream.thumbnail_width,
-        height: insertedStream.thumbnail_height,
-        format: insertedStream.thumbnail_format,
-        bytes: insertedStream.thumbnail_bytes,
-      } : null
+      thumbnail: enrichThumbnailFromRow(insertedStream)
     }
 
     console.log('✓ Stream created manually:', responseStream.title, '| Thumbnail:', !!responseStream.thumbnail)
@@ -192,7 +176,7 @@ router.put('/:id', async (req, res) => {
     // Если передан новый thumbnail URL вручную
     if (streamData.thumbnail !== undefined) {
       if (streamData.thumbnail) {
-        newThumbnailData = normalizeThumbnailData(streamData.thumbnail)
+        newThumbnailData = await normalizeThumbnailData(streamData.thumbnail)
       } else {
         // Если передан пустой thumbnail - очищаем
         newThumbnailData = {}
@@ -252,15 +236,7 @@ router.put('/:id', async (req, res) => {
       ...updatedStream,
       tags: updatedStream.tags ? JSON.parse(updatedStream.tags) : [],
       categories: updatedStream.categories ? JSON.parse(updatedStream.categories) : [],
-      thumbnail: updatedStream.thumbnail_url ? {
-        url: updatedStream.thumbnail_url,
-        publicId: updatedStream.thumbnail_public_id,
-        source: updatedStream.thumbnail_source,
-        width: updatedStream.thumbnail_width,
-        height: updatedStream.thumbnail_height,
-        format: updatedStream.thumbnail_format,
-        bytes: updatedStream.thumbnail_bytes,
-      } : null
+      thumbnail: enrichThumbnailFromRow(updatedStream)
     }
 
     console.log('✓ Stream updated:', responseStream.title, '| Thumbnail:', !!responseStream.thumbnail)
@@ -288,15 +264,9 @@ router.delete('/:id', async (req, res) => {
     }
 
     // Удаляем превью из Cloudinary, если оно там хранится
-    if (stream.thumbnail_public_id && stream.thumbnail_source === 'cloudinary') {
-      console.log('Deleting thumbnail from Cloudinary:', stream.thumbnail_public_id)
-      try {
-        await deleteFromCloudinary(stream.thumbnail_public_id)
-        console.log('✓ Thumbnail deleted from Cloudinary')
-      } catch (error) {
-        console.error('✗ Failed to delete thumbnail from Cloudinary:', error)
-        // Не прерываем удаление стрима из БД, просто логируем ошибку
-      }
+    if (stream.thumbnail_public_id && stream.thumbnail_source === 'local') {
+      console.log('Deleting local thumbnail:', stream.thumbnail_public_id)
+      await deleteStoredImage(stream.thumbnail_public_id)
     }
 
     // Удаляем стрим
