@@ -85,13 +85,14 @@ sudo chmod -R 775 /var/www/images
 
 ## 5. Установка Imaginary
 
-1. Скачайте последний релиз:
+1. Скачайте последний релиз (используем ссылку `…/latest/…`, поэтому версия всегда свежая):
    ```bash
    cd /tmp
-   wget https://github.com/h2non/imaginary/releases/download/v1.2.4/imaginary-linux-amd64
-   sudo mv imaginary-linux-amd64 /usr/local/bin/imaginary
+   curl -L https://github.com/h2non/imaginary/releases/latest/download/imaginary-linux-amd64 -o imaginary
+   sudo mv imaginary /usr/local/bin/imaginary
    sudo chmod +x /usr/local/bin/imaginary
    ```
+   > Если GitHub заблокирован, зайдите на https://github.com/h2non/imaginary/releases, скачайте нужный файл вручную и перенесите его на сервер (scp).
 2. Создайте сервис:
    ```bash
    sudo tee /etc/systemd/system/imaginary.service > /dev/null <<'EOF'
@@ -198,39 +199,30 @@ Certbot автоматически перепишет конфигурацию (
 
 ---
 
-## 8. Запуск backend
+## 8. Запуск backend через PM2
 
-```bash
-cd /opt/rephhggvi
-npm run start:prod
-```
+PM2 позволит перезапускать приложение при сбоях, смотреть логи и автозапускать после перезагрузки.
 
-Лучше оформить как сервис (пример `/etc/systemd/system/rephhggvi.service`):
-
-```ini
-[Unit]
-Description=Telegram VOD Archive
-After=network.target
-
-[Service]
-Environment=NODE_ENV=production
-WorkingDirectory=/opt/rephhggvi
-ExecStart=/usr/bin/node server.js
-Restart=always
-User=www-data
-Group=www-data
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Запустите:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now rephhggvi
-sudo systemctl status rephhggvi
-```
+1. Установите PM2 глобально:
+   ```bash
+   sudo npm install -g pm2
+   ```
+2. Перейдите в папку проекта и запустите backend:
+   ```bash
+   cd /opt/rephhggvi
+   NODE_ENV=production pm2 start server.js --name vod-backend
+   ```
+   PM2 сам подхватит переменные из `.env`.
+3. Сохраните конфигурацию PM2 и настройте автозапуск:
+   ```bash
+   pm2 save
+   pm2 startup systemd
+   # выполните команду, которую PM2 выведет (обычно sudo env PATH=$PATH pm2 startup ...)
+   ```
+4. Основные команды:
+   - `pm2 status` — список процессов;
+   - `pm2 logs vod-backend` — онлайн‑логи;
+   - `pm2 restart vod-backend` / `pm2 stop vod-backend`.
 
 ---
 
@@ -285,8 +277,8 @@ Frontend автоматически берёт `thumbnail.url` → теперь 
 
 | Команда | Назначение |
 | --- | --- |
+| `pm2 status` / `pm2 logs vod-backend` | состояние и логи backend |
 | `journalctl -u imaginary -f` | логи Imaginary |
-| `journalctl -u rephhggvi -f` | логи backend |
 | `tail -f /var/log/nginx/access.log` | логи Nginx |
 | `tail -f /var/log/img-upload.log` | действия из веб-панели |
 

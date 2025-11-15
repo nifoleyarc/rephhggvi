@@ -7,6 +7,7 @@ class TelegrafBot {
   constructor() {
     this.botToken = process.env.TELEGRAM_BOT_TOKEN
     this.miniAppUrl = process.env.MINI_APP_URL || 'https://your-mini-app.com'
+    this.started = false
     
     if (!this.botToken) {
       console.error('❌ TELEGRAM_BOT_TOKEN не установлен')
@@ -101,7 +102,7 @@ class TelegrafBot {
       const botInfo = await this.bot.telegram.getMe()
       console.log(`✅ Бот готов: @${botInfo.username} (${botInfo.first_name})`)
       console.log('ℹ️ Используется webhook режим (polling отключен)')
-      
+      this.started = true
       return true
     } catch (error) {
       console.error('❌ Ошибка подготовки бота:', error.message)
@@ -111,9 +112,17 @@ class TelegrafBot {
   
   // Остановка бота
   stop() {
-    if (this.bot) {
-      console.log('🛑 Остановка Telegraf бота...')
+    if (!this.bot || !this.started) {
+      console.log('ℹ️ Telegraf бот не был запущен, остановка не требуется')
+      return
+    }
+
+    console.log('🛑 Остановка Telegraf бота...')
+    try {
       this.bot.stop()
+      this.started = false
+    } catch (error) {
+      console.warn('⚠️ Ошибка остановки бота (игнорируем):', error.message)
     }
   }
   
