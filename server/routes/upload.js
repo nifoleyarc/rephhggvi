@@ -5,7 +5,7 @@ import fs from 'fs/promises'
 import { fileURLToPath } from 'url'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
-import { saveUploadedImage, MAX_UPLOAD_SIZE_BYTES } from '../utils/imageStorage.js'
+import { saveUploadedImage, MAX_UPLOAD_SIZE_BYTES, deleteStoredImage } from '../utils/imageStorage.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -160,6 +160,34 @@ router.post('/', requireSession, upload.single('file'), async (req, res) => {
   }
 })
 
+router.post('/delete', requireSession, async (req, res) => {
+  try {
+    const { publicId } = req.body || {}
+
+    if (!publicId || typeof publicId !== 'string') {
+      return res.status(400).json({ error: 'publicId не указан' })
+    }
+
+    const deleted = await deleteStoredImage(publicId)
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Изображение уже удалено или не найдено' })
+    }
+
+    await logUpload({
+      at: new Date().toISOString(),
+      user: req.uploadSession?.user || 'unknown',
+      event: 'manual-delete',
+      publicId
+    })
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error('Ошибка удаления загруженного изображения:', error)
+    return res.status(500).json({ error: 'Не удалось удалить изображение' })
+  }
+})
+
 function renderUploadPage(isAuthenticated = false) {
   const maxSizeMb = (MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)).toFixed(0)
   const cdnBase = process.env.IMAGE_CDN_BASE_URL || 'https://img.example.com'
@@ -183,6 +211,26 @@ function renderUploadPage(isAuthenticated = false) {
     .dropzone { border: 2px dashed rgba(148,163,184,0.6); transition: all 0.2s ease; }
     .dropzone.dragover { border-color: #38bdf8; background-color: rgba(56,189,248,0.1); }
     .result-card { background-color: rgba(15,23,42,0.85); border: 1px solid rgba(148,163,184,0.2); }
+    .preview-wrapper img { max-width: 400px; width: 100%; height: auto; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .toast {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      background-color: rgba(15,23,42,0.95);
+      border: 1px solid rgba(148,163,184,0.4);
+      color: #f8fafc;
+      padding: 12px 18px;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 25px rgba(15,23,42,0.5);
+      z-index: 9999;
+      animation: toast-in 0.2s ease-out;
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body class="min-h-screen">
@@ -238,6 +286,19 @@ function renderUploadPage(isAuthenticated = false) {
           <h2 class="text-xl font-semibold">Готово ✨</h2>
           <button id="copyOptimized" class="text-sm px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition">Скопировать ссылку</button>
         </div>
+        <div id="previewWrapper" class="hidden preview-wrapper bg-slate-900/40 border border-slate-700/40 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <p class="text-sm text-slate-400 uppercase tracking-widest">Превью</p>
+            <button id="deleteImageBtn" type="button" class="p-2 rounded-full bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition" aria-label="Удалить изображение" title="Удалить изображение" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11v6m6-6v6M4 7h16m-1 0l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-3h4a1 1 0 011 1v2H9V5a1 1 0 011-1z" />
+              </svg>
+            </button>
+          </div>
+          <div class="flex justify-center">
+            <img id="previewImage" alt="Превью загруженного изображения" class="rounded-xl border border-slate-700/50 shadow-lg" />
+          </div>
+        </div>
         <div class="space-y-2">
           <p class="text-sm text-slate-400 uppercase tracking-widest">Оригинал</p>
           <code id="originalUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
@@ -270,6 +331,10 @@ function renderUploadPage(isAuthenticated = false) {
     const loginError = document.getElementById('loginError')
     const logoutBtn = document.getElementById('logoutBtn')
     const rememberInput = document.getElementById('rememberInput')
+    const previewWrapper = document.getElementById('previewWrapper')
+    const previewImage = document.getElementById('previewImage')
+    const deleteImageBtn = document.getElementById('deleteImageBtn')
+    let currentPublicId = null
 
     function resetUI() {
       statusBox.classList.add('hidden')
@@ -289,12 +354,50 @@ function renderUploadPage(isAuthenticated = false) {
       resultBox.classList.add('hidden')
     }
 
+    function clearResultUi() {
+      currentPublicId = null
+      resultBox?.classList.add('hidden')
+      previewWrapper?.classList.add('hidden')
+      if (previewImage) {
+        previewImage.removeAttribute('src')
+      }
+      if (deleteImageBtn) {
+        deleteImageBtn.setAttribute('disabled', 'true')
+      }
+      const fields = ['originalUrl', 'optimizedUrl', 'variantPreview', 'variantCard', 'variantFull']
+      fields.forEach((id) => {
+        const el = document.getElementById(id)
+        if (el) el.textContent = ''
+      })
+    }
+
+    function showToastMessage(message) {
+      const toast = document.createElement('div')
+      toast.className = 'toast'
+      toast.textContent = message
+      toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+      document.body.appendChild(toast)
+      setTimeout(() => {
+        toast.style.opacity = '0'
+        toast.style.transform = 'translateY(-10px)'
+      }, 1600)
+      setTimeout(() => toast.remove(), 2200)
+    }
+
     function showResult(data) {
+      currentPublicId = data.publicId || null
       document.getElementById('originalUrl').textContent = data.original
       document.getElementById('optimizedUrl').textContent = data.optimized
       document.getElementById('variantPreview').textContent = data.variants.preview
       document.getElementById('variantCard').textContent = data.variants.card
       document.getElementById('variantFull').textContent = data.variants.full
+      const previewUrl = data?.variants?.preview || data.optimized || data.original
+      if (previewUrl && previewImage) {
+        previewImage.src = previewUrl
+        previewImage.alt = `Превью ${data.publicId || ''}`
+        previewWrapper?.classList.remove('hidden')
+        deleteImageBtn?.removeAttribute('disabled')
+      }
       resultBox.classList.remove('hidden')
     }
 
@@ -355,6 +458,33 @@ function renderUploadPage(isAuthenticated = false) {
         setTimeout(() => (copyButton.textContent = 'Скопировать ссылку'), 2000)
       } catch (error) {
         console.error('Clipboard error', error)
+      }
+    })
+
+    deleteImageBtn?.addEventListener('click', async () => {
+      if (!currentPublicId) return
+      setStatus('Удаляем изображение...')
+      deleteImageBtn.disabled = true
+      try {
+        const response = await fetch('/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ publicId: currentPublicId })
+        })
+
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || 'Не удалось удалить изображение')
+        }
+
+        setStatus('Изображение удалено')
+        showToastMessage('Изображение удалено')
+        clearResultUi()
+        setTimeout(() => window.location.reload(), 2000)
+      } catch (error) {
+        setError(error.message)
+        deleteImageBtn.disabled = false
       }
     })
 
