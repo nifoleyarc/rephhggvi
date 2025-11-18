@@ -394,7 +394,7 @@ function renderUploadPage(isAuthenticated = false) {
       const previewUrl = data?.variants?.preview || data.optimized || data.original
       if (previewUrl && previewImage) {
         previewImage.src = previewUrl
-        previewImage.alt = `Превью ${data.publicId || ''}`
+        previewImage.alt = 'Превью ' + (data.publicId || '')
         previewWrapper?.classList.remove('hidden')
         deleteImageBtn?.removeAttribute('disabled')
       }
