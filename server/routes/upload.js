@@ -205,14 +205,403 @@ function renderUploadPage(isAuthenticated = false) {
   <link rel="icon" type="image/png" sizes="16x16" href="/nikothan-favicon/favicon-16x16.png" />
   <link rel="manifest" href="/nikothan-favicon/site.webmanifest" />
   <link rel="shortcut icon" href="/nikothan-favicon/favicon.ico" />
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-    .dropzone { border: 2px dashed rgba(148,163,184,0.6); transition: all 0.2s ease; }
-    .dropzone.dragover { border-color: #38bdf8; background-color: rgba(56,189,248,0.1); }
-    .result-card { background-color: rgba(15,23,42,0.85); border: 1px solid rgba(148,163,184,0.2); }
-    .preview-wrapper img { max-width: 400px; width: 100%; height: auto; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    :root {
+      --bg: #0f172a;
+      --panel: rgba(15,23,42,0.85);
+      --panel-soft: rgba(15,23,42,0.65);
+      --border: rgba(148,163,184,0.2);
+      --border-strong: rgba(148,163,184,0.38);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #0ea5e9;
+      --accent-strong: #38bdf8;
+      --success: #10b981;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    body button,
+    body input {
+      font-family: inherit;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .upload-shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    @media (max-width: 640px) {
+      .upload-shell {
+        padding: 2rem 1rem;
+      }
+    }
+
+    .upload-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .tagline {
+      color: var(--accent-strong);
+      text-transform: uppercase;
+      letter-spacing: 0.35em;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 700;
+    }
+
+    .description {
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 720px;
+    }
+
+    .result-card {
+      background-color: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 1.75rem;
+      box-shadow: 0 25px 60px rgba(2, 6, 23, 0.4);
+    }
+
+    .result-card > * + * {
+      margin-top: 1rem;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .form-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      color: #cbd5f5;
+    }
+
+    .form-input {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border-strong);
+      background: var(--panel-soft);
+      color: var(--text);
+      padding: 0.85rem 1rem;
+      font-size: 1rem;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35);
+    }
+
+    .form-remember {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .form-checkbox {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.4);
+      accent-color: var(--accent);
+    }
+
+    .form-error {
+      color: #fecaca;
+      font-size: 0.85rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: 999px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      color: #fff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn.full-width {
+      width: 100%;
+    }
+
+    .btn.small {
+      padding: 0.45rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+      box-shadow: 0 10px 25px rgba(14,165,233,0.35);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 15px 35px rgba(14,165,233,0.5);
+    }
+
+    .btn-ghost {
+      background: rgba(51,65,85,0.7);
+      color: var(--text);
+      border: 1px solid rgba(148,163,184,0.25);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(51,65,85,0.85);
+    }
+
+    .btn-outline {
+      background: rgba(56,189,248,0.15);
+      color: #7dd3fc;
+      border: 1px solid rgba(56,189,248,0.45);
+    }
+
+    .btn-outline:hover {
+      background: rgba(56,189,248,0.25);
+    }
+
+    .btn-icon {
+      border-radius: 999px;
+      border: 1px solid rgba(248,113,113,0.35);
+      background: rgba(248,113,113,0.12);
+      color: #fecdd3;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .btn-icon:active {
+      transform: scale(0.95);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .status-text {
+      color: #6ee7b7;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(148,163,184,0.6);
+      transition: all 0.2s ease;
+      border-radius: 24px;
+      padding: 3rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .dropzone.dragover {
+      border-color: var(--accent-strong);
+      background-color: rgba(56,189,248,0.1);
+    }
+
+    .dropzone .title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .dropzone .hint {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .dropzone svg {
+      width: 48px;
+      height: 48px;
+      color: rgba(148,163,184,0.85);
+    }
+
+    .alert {
+      border-radius: 18px;
+      padding: 0.95rem 1.25rem;
+      font-size: 0.9rem;
+      border: 1px solid transparent;
+    }
+
+    .alert-success {
+      background: rgba(16,185,129,0.12);
+      border-color: rgba(16,185,129,0.35);
+      color: #bbf7d0;
+    }
+
+    .alert-error {
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(239,68,68,0.35);
+      color: #fecaca;
+    }
+
+    .section-label {
+      font-size: 0.85rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    code {
+      display: block;
+      background: rgba(15,23,42,0.6);
+      padding: 0.85rem;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,0.3);
+      font-size: 0.9rem;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    details {
+      border-radius: 16px;
+      border: 1px solid rgba(148,163,184,0.2);
+      background: rgba(15,23,42,0.45);
+      padding: 1rem;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .preview-wrapper {
+      background: rgba(15,23,42,0.45);
+      border: 1px solid rgba(148,163,184,0.25);
+      border-radius: 22px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .preview-title {
+      font-size: 0.85rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .preview-wrapper img {
+      max-width: 400px;
+      width: 100%;
+      height: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: 0 20px 40px rgba(2,6,23,0.5);
+    }
+
+    .result-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .variants-block {
+      margin-top: 0.5rem;
+    }
+
+    .variant-list {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+    }
+
+    .variant-list span {
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-right: 0.5rem;
+    }
+
+    .example-note {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
     .toast {
       position: fixed;
       top: 24px;
@@ -226,96 +615,98 @@ function renderUploadPage(isAuthenticated = false) {
       box-shadow: 0 10px 25px rgba(15,23,42,0.5);
       z-index: 9999;
       animation: toast-in 0.2s ease-out;
+      transition: opacity 0.3s ease, transform 0.3s ease;
     }
+
     @keyframes toast-in {
       from { opacity: 0; transform: translateY(-8px); }
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
-<body class="min-h-screen">
-  <div class="max-w-3xl mx-auto py-12 px-4 space-y-8">
-    <header class="space-y-2">
-      <p class="text-sky-400 font-semibold uppercase tracking-widest text-xs">Self-hosted CDN</p>
-      <h1 class="text-3xl font-bold">Загрузка превью</h1>
-      <p class="text-slate-400 max-w-2xl">
+<body>
+  <div class="upload-shell">
+    <header class="upload-header">
+      <p class="tagline">Self-hosted CDN</p>
+      <h1 class="page-title">Загрузка превью</h1>
+      <p class="description">
         Перетащите файл в область ниже или выберите его вручную. Допустимые форматы: JPG, PNG, WEBP.
         Максимальный размер файла — ${maxSizeMb} МБ.
       </p>
     </header>
 
-    <div id="login-card" class="result-card rounded-2xl p-6 space-y-4 ${isAuthenticated ? 'hidden' : ''}">
-      <h2 class="text-xl font-semibold">Вход</h2>
-      <p class="text-slate-400 text-sm">Введите пароль администратора, чтобы получить доступ к загрузке изображений.</p>
-      <form id="loginForm" class="space-y-3">
-        <label class="block text-sm text-slate-300">
-          Пароль:
-          <input type="password" id="passwordInput" class="mt-1 w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-600 focus:outline-none focus:border-sky-500" placeholder="••••••••" required />
+    <div id="login-card" class="result-card ${isAuthenticated ? 'hidden' : ''}">
+      <h2 class="card-title">Вход</h2>
+      <p class="muted">Введите пароль администратора, чтобы получить доступ к загрузке изображений.</p>
+      <form id="loginForm" class="form-fields">
+        <label class="form-label">
+          <span>Пароль</span>
+          <input type="password" id="passwordInput" class="form-input" placeholder="••••••••" required />
         </label>
-        <label class="flex items-center gap-2 text-sm text-slate-400">
-          <input type="checkbox" id="rememberInput" class="rounded bg-slate-900/60 border-slate-600">
-          Запомнить на 30 дней
+        <label class="form-remember">
+          <input type="checkbox" id="rememberInput" class="form-checkbox">
+          <span>Запомнить на 30 дней</span>
         </label>
-        <button type="submit" class="w-full py-2 rounded-lg bg-sky-500/80 hover:bg-sky-500 text-white font-semibold transition">Войти</button>
+        <button type="submit" class="btn btn-primary full-width">Войти</button>
       </form>
-      <div id="loginError" class="hidden text-sm text-rose-300"></div>
+      <div id="loginError" class="hidden form-error"></div>
     </div>
 
-    <div id="uploader-card" class="${isAuthenticated ? '' : 'hidden'} space-y-6">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-emerald-300 font-medium">Авторизация успешна</div>
-        <button id="logoutBtn" class="text-sm px-3 py-1 rounded-full bg-slate-700/60 text-slate-200 hover:bg-slate-600 transition">Выйти</button>
+    <div id="uploader-card" class="${isAuthenticated ? '' : 'hidden'} result-card">
+      <div class="status-bar">
+        <div class="status-text">Авторизация успешна</div>
+        <button id="logoutBtn" class="btn btn-ghost small">Выйти</button>
       </div>
 
-      <div id="dropzone" class="dropzone rounded-2xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div id="dropzone" class="dropzone">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h10a4 4 0 004-4m-4-6l-4-4m0 0L7 9m4-4v12" />
         </svg>
-        <div class="text-center space-y-1">
-          <p class="text-lg font-medium">Перетащите файл сюда</p>
-          <p class="text-sm text-slate-400">или нажмите для выбора</p>
+        <div>
+          <p class="title">Перетащите файл сюда</p>
+          <p class="hint">или нажмите для выбора</p>
         </div>
         <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="hidden" />
       </div>
 
-      <div id="status" class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 rounded-xl px-4 py-3 text-sm"></div>
-      <div id="error" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-200 rounded-xl px-4 py-3 text-sm"></div>
+      <div id="status" class="hidden alert alert-success"></div>
+      <div id="error" class="hidden alert alert-error"></div>
 
-      <div id="result" class="hidden result-card rounded-2xl p-6 space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold">Готово ✨</h2>
-          <button id="copyOptimized" class="text-sm px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition">Скопировать ссылку</button>
+      <div id="result" class="hidden result-card">
+        <div class="status-bar">
+          <h2 class="card-title">Готово ✨</h2>
+          <button id="copyOptimized" class="btn btn-outline small">Скопировать ссылку</button>
         </div>
-        <div id="previewWrapper" class="hidden preview-wrapper bg-slate-900/40 border border-slate-700/40 rounded-2xl p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-sm text-slate-400 uppercase tracking-widest">Превью</p>
-            <button id="deleteImageBtn" type="button" class="p-2 rounded-full bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition" aria-label="Удалить изображение" title="Удалить изображение" disabled>
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div id="previewWrapper" class="hidden preview-wrapper">
+          <div class="preview-header">
+            <p class="preview-title">Превью</p>
+            <button id="deleteImageBtn" type="button" class="btn-icon" aria-label="Удалить изображение" title="Удалить изображение" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11v6m6-6v6M4 7h16m-1 0l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-3h4a1 1 0 011 1v2H9V5a1 1 0 011-1z" />
               </svg>
             </button>
           </div>
-          <div class="flex justify-center">
-            <img id="previewImage" alt="Превью загруженного изображения" class="rounded-xl border border-slate-700/50 shadow-lg" />
+          <div class="preview-image">
+            <img id="previewImage" alt="Превью загруженного изображения" loading="lazy" />
           </div>
         </div>
-        <div class="space-y-2">
-          <p class="text-sm text-slate-400 uppercase tracking-widest">Оригинал</p>
-          <code id="originalUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
+        <div class="result-section">
+          <p class="section-label">Оригинал</p>
+          <code id="originalUrl"></code>
         </div>
-        <div class="space-y-2">
-          <p class="text-sm text-slate-400 uppercase tracking-widest">Оптимизация</p>
-          <code id="optimizedUrl" class="block bg-slate-900/60 p-3 rounded-lg text-slate-100 text-sm break-all"></code>
+        <div class="result-section">
+          <p class="section-label">Оптимизация</p>
+          <code id="optimizedUrl"></code>
         </div>
-        <details class="bg-slate-900/40 rounded-lg p-4">
-          <summary class="cursor-pointer text-sm text-slate-300">Дополнительные варианты</summary>
-          <div class="mt-3 space-y-2 text-sm">
-            <div><span class="text-slate-400 uppercase text-xs">Preview:</span> <code id="variantPreview" class="break-all block"></code></div>
-            <div><span class="text-slate-400 uppercase text-xs">Card:</span> <code id="variantCard" class="break-all block"></code></div>
-            <div><span class="text-slate-400 uppercase text-xs">Full:</span> <code id="variantFull" class="break-all block"></code></div>
+        <details class="variants-block">
+          <summary>Дополнительные варианты</summary>
+          <div class="variant-list">
+            <div><span class="section-label">Preview:</span> <code id="variantPreview"></code></div>
+            <div><span class="section-label">Card:</span> <code id="variantCard"></code></div>
+            <div><span class="section-label">Full:</span> <code id="variantFull"></code></div>
           </div>
         </details>
-        <p class="text-xs text-slate-500">Пример ссылки для вставки: <code>${defaultExample}</code></p>
+        <p class="example-note">Пример ссылки для вставки: <code>${defaultExample}</code></p>
       </div>
     </div>
 
